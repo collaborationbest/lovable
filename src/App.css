@@ -1,0 +1,168 @@
+#root {
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* Optimisations pour améliorer les performances */
+.app-container {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+}
+
+/* Page Transition Animations - Améliorées pour des transitions plus douces */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+
+.page-exit {
+  opacity: 1;
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+/* Route transitions - Nouvelles animations pour les changements de page */
+.route-transition-enter {
+  opacity: 0;
+  transform: translateX(3px);
+}
+
+.route-transition-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+}
+
+.route-transition-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.route-transition-exit-active {
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 150ms ease-in, transform 150ms ease-in;
+}
+
+/* Smooth tab transitions */
+.tab-transition {
+  transition: all 0.3s ease;
+}
+
+/* Optimized scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #B88E23;
+  opacity: 0.5;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #927219;
+}
+
+/* Performance optimizations */
+body {
+  overflow-x: hidden;
+}
+
+/* Optimized content areas */
+.content-area {
+  height: 100vh;
+  overflow-y: auto;
+  contain: content; /* CSS containment for better performance */
+}
+
+/* Animations optimisées */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out forwards;
+  will-change: transform, opacity; /* Performance hint for browsers */
+}
+
+/* Transition de page - Nouvelle animation améliorée */
+@keyframes fadeInPage {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: fadeInPage 0.18s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+/* Animations de chargement */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Transition link hover effect */
+.nav-link {
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: #B88E23;
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+/* Main content transition */
+.main-content {
+  transition: all 0.3s ease-in-out;
+}
