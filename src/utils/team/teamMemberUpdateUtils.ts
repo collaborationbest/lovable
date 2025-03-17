@@ -2,6 +2,7 @@
 import { TeamMember } from "@/types/TeamMember";
 import { supabase } from "@/integrations/supabase/client";
 import { transformTeamMemberToDatabase } from "./teamMemberTransformUtils";
+import { invalidateTeamMembersCache } from "./teamMemberFetchUtils";
 
 // Function to delete a team member from database
 export const deleteTeamMember = async (id: string): Promise<{ error: any }> => {
@@ -14,6 +15,9 @@ export const deleteTeamMember = async (id: string): Promise<{ error: any }> => {
     if (error) {
       throw error;
     }
+    
+    // Invalidate cache after successful delete
+    invalidateTeamMembersCache();
     
     return { error: null };
   } catch (error) {
@@ -36,6 +40,9 @@ export const updateTeamMember = async (id: string, updatedMember: Partial<TeamMe
       throw error;
     }
     
+    // Invalidate cache after successful update
+    invalidateTeamMembersCache();
+    
     return { error: null };
   } catch (error) {
     console.error("Error updating team member:", error);
@@ -44,16 +51,23 @@ export const updateTeamMember = async (id: string, updatedMember: Partial<TeamMe
 };
 
 // Function to upload a contract for a team member
-export const uploadContract = async (id: string, contractFile: string): Promise<{ error: any }> => {
+export const uploadContract = async (id: string, filePath: string, fileName: string): Promise<{ error: any }> => {
   try {
+    // Update the team member with the contract information
     const { error } = await supabase
       .from('team_members')
-      .update({ contract_file: contractFile })
+      .update({ 
+        contract_file: filePath,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', id);
     
     if (error) {
       throw error;
     }
+    
+    // Invalidate cache after successful contract upload
+    invalidateTeamMembersCache();
     
     return { error: null };
   } catch (error) {

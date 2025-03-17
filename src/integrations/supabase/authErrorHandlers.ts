@@ -19,14 +19,14 @@ export const handleSignupError = (error: any) => {
     error.message?.includes("already registered") ||
     error.message?.includes("Database error saving new user")
   ) {
-    toast({
+    toast.default({
       variant: "destructive",
       title: "Erreur d'inscription",
       description: "Cette adresse email est déjà utilisée pour un compte existant.",
     });
   } else {
     // General error handling
-    toast({
+    toast.default({
       variant: "destructive",
       title: "Erreur d'inscription",
       description: error.message || "Une erreur est survenue lors de l'inscription",

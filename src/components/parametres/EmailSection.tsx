@@ -31,12 +31,12 @@ const EmailSection = ({ user, loading, setLoading }: EmailSectionProps) => {
       
       if (error) throw error;
       
-      toast({
+      toast.default({
         title: "Email mis à jour",
         description: "Un lien de confirmation a été envoyé à votre nouvelle adresse email.",
       });
     } catch (error: any) {
-      toast({
+      toast.default({
         title: "Erreur",
         description: error.message || "Une erreur est survenue lors de la mise à jour de l'email.",
         variant: "destructive",

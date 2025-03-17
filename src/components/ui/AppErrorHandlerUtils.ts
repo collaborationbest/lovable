@@ -1,288 +1,287 @@
 
-import { supabase, ensureUserCabinetAssociation } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { ensureUserCabinetAssociation } from '@/integrations/supabase/cabinetUtils';
 
-// Helper function to check if a user is an admin
-export const checkAndFixAdminStatus = async (setCheckingAdmin: (checking: boolean) => void): Promise<void> => {
-  // Prevent concurrent checks
-  setCheckingAdmin(true);
-  
+// Add the missing checkAndFixAdminStatus function
+export const checkAndFixAdminStatus = async (setCheckingAdmin: (checking: boolean) => void): Promise<boolean> => {
   try {
-    console.log("Checking and fixing admin status...");
-    const { data: { session } } = await supabase.auth.getSession();
+    setCheckingAdmin(true);
     
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       console.log("No session found, skipping admin check");
-      setCheckingAdmin(false);
-      return;
+      return false;
     }
     
-    const userId = session.user.id;
-    const userEmail = session.user.email;
-    
-    if (!userEmail) {
-      console.log("No user email found, skipping admin check");
-      setCheckingAdmin(false);
-      return;
+    // Check if user is already an admin
+    const { data, error } = await supabase
+      .from('team_members')
+      .select('id, is_admin')
+      .eq('contact', user.email)
+      .eq('is_admin', true)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error checking admin status:", error);
+      return false;
     }
-    
-    console.log(`Checking admin status for user ${userEmail}`);
-    
-    // Special case for specific email addresses that should always be admin
-    const isSpecialAdmin = userEmail === 'r.haddadpro@gmail.com' || userEmail === 'cabinet@docteurhaddad.fr';
-    
-    try {
-      // Check if the user has a team_member entry with admin privileges
-      const { data: teamMember, error: teamMemberError } = await supabase
+
+    if (data) {
+      console.log("User is already an admin, no fix needed");
+      return true;
+    }
+
+    // Only try to fix if the user email matches our known account owner email
+    if (user.email === 'r.haddadpro@gmail.com' || user.email === 'cabinet@docteurhaddad.fr') {
+      console.log("Account owner detected, will fix admin status");
+      
+      // Get the user's cabinet ID
+      const cabinetId = await ensureUserCabinetAssociation(user.id);
+      
+      if (!cabinetId) {
+        console.error("Could not determine cabinet ID for user");
+        return false;
+      }
+      
+      // Update the user's team_member entry to make them an admin
+      const { error: updateError } = await supabase
         .from('team_members')
-        .select('*')
-        .eq('contact', userEmail)
-        .maybeSingle();
+        .update({ is_admin: true })
+        .eq('contact', user.email)
+        .eq('cabinet_id', cabinetId);
       
-      if (teamMemberError) {
-        console.error("Error checking team member status:", teamMemberError);
-        
-        // If we got a recursion error, we need to try a different approach
-        if (teamMemberError.message?.includes('infinite recursion') || teamMemberError.code === '42P17') {
-          await handleRecursionError(userId, userEmail, isSpecialAdmin);
-        }
-        
-        setCheckingAdmin(false);
-        return;
+      if (updateError) {
+        console.error("Error updating admin status:", updateError);
+        return false;
       }
       
-      // Find cabinets owned by this user
-      const { data: cabinets, error: cabinetsError } = await supabase
-        .from('cabinets')
-        .select('id')
-        .eq('owner_id', userId);
-      
-      if (cabinetsError) {
-        console.error("Error checking owned cabinets:", cabinetsError);
-        setCheckingAdmin(false);
-        return;
-      }
-      
-      console.log(`User owns ${cabinets?.length || 0} cabinets`);
-      
-      // Check if user owns cabinets but isn't an admin
-      if ((cabinets && cabinets.length > 0) || isSpecialAdmin) {
-        const cabinetId = cabinets && cabinets.length > 0 ? cabinets[0].id : "126"; // Default to cabinet 126 for special admins
-        
-        if (!teamMember) {
-          console.log("User owns cabinets but has no team member entry. Creating one...");
-          await createTeamMemberForOwner(userId, userEmail, cabinetId);
-        } else if (!teamMember.is_admin || (cabinetId && teamMember.cabinet_id !== cabinetId)) {
-          console.log("User owns cabinets but isn't an admin or has wrong cabinet. Updating role...");
-          await updateTeamMemberAdminStatus(teamMember.id, cabinetId);
-        } else {
-          console.log("User already has admin privileges for their cabinet");
-        }
-      } else {
-        console.log("User doesn't own any cabinets");
-      }
-    } catch (error) {
-      console.error("Error in team member check:", error);
-      // Try the fallback method if regular methods fail
-      await handleRecursionError(userId, userEmail, isSpecialAdmin);
+      console.log("Successfully fixed admin status for account owner");
+      return true;
     }
+    
+    return false;
   } catch (error) {
     console.error("Error in checkAndFixAdminStatus:", error);
+    return false;
   } finally {
     setCheckingAdmin(false);
   }
 };
 
-// Handle recursion errors with our direct database approach
-export const handleRecursionError = async (userId: string, userEmail: string, isSpecialAdmin: boolean): Promise<void> => {
+// Type definitions for error handling
+type ErrorType = 'auth' | 'database' | 'network' | 'storage' | 'unknown';
+
+interface ErrorInfo {
+  type: ErrorType;
+  message: string;
+  details?: string;
+  suggestionForUser?: string;
+}
+
+/**
+ * Processes and classifies different types of errors
+ */
+export const processError = (error: any): ErrorInfo => {
+  // Default error info
+  const defaultError: ErrorInfo = {
+    type: 'unknown',
+    message: 'Une erreur inconnue est survenue',
+    suggestionForUser: 'Veuillez réessayer ou contacter le support'
+  };
+
+  if (!error) return defaultError;
+
+  // Convert error to string if it's not already
+  const errorString = typeof error === 'string' ? error : error.message || JSON.stringify(error);
+
+  // Authentication errors
+  if (errorString.includes('auth') || errorString.includes('JWT') || errorString.includes('token')) {
+    return {
+      type: 'auth',
+      message: 'Erreur d\'authentification',
+      details: errorString,
+      suggestionForUser: 'Veuillez vous reconnecter ou vérifier vos identifiants'
+    };
+  }
+
+  // Database errors
+  if (errorString.includes('database') || errorString.includes('DB') || errorString.includes('SQL')) {
+    return {
+      type: 'database',
+      message: 'Erreur de base de données',
+      details: errorString,
+      suggestionForUser: 'Une erreur est survenue lors de l\'accès aux données'
+    };
+  }
+
+  // Network errors
+  if (errorString.includes('network') || errorString.includes('connexion') || errorString.includes('timeout')) {
+    return {
+      type: 'network',
+      message: 'Erreur de connexion',
+      details: errorString,
+      suggestionForUser: 'Veuillez vérifier votre connexion internet'
+    };
+  }
+
+  // Storage errors
+  if (errorString.includes('storage') || errorString.includes('upload') || errorString.includes('file')) {
+    return {
+      type: 'storage',
+      message: 'Erreur de stockage',
+      details: errorString,
+      suggestionForUser: 'Une erreur est survenue lors du traitement du fichier'
+    };
+  }
+
+  // Default case
+  return {
+    type: 'unknown',
+    message: 'Erreur',
+    details: errorString,
+    suggestionForUser: 'Veuillez réessayer ou contacter le support'
+  };
+};
+
+/**
+ * Recovers from errors by attempting some recovery strategies
+ */
+export const recoverFromError = async (error: ErrorInfo): Promise<boolean> => {
   try {
-    console.log("Using direct database approach to fix admin status due to recursion error");
-    
-    // Find cabinets owned by this user
-    const { data: cabinets } = await supabase
-      .from('cabinets')
-      .select('id')
-      .eq('owner_id', userId);
-    
-    const ownerOfCabinets = cabinets && cabinets.length > 0;
-    const cabinetId = ownerOfCabinets ? cabinets[0].id : "126"; // Default to cabinet 126 for special admins
-    
-    if (ownerOfCabinets || isSpecialAdmin) {
-      // Extract first and last name from email
-      let firstName = userEmail.split('@')[0];
-      let lastName = "";
-      
-      // Try to extract a proper name if possible
-      const nameParts = firstName.split(/[._-]/);
-      if (nameParts.length > 1) {
-        firstName = nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1);
-        lastName = nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1);
-      } else {
-        firstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
-      }
-      
-      // Create association with the cabinet
-      const success = await ensureUserCabinetAssociation(cabinetId, {
-        firstName,
-        lastName,
-        email: userEmail,
-        isAdmin: true,
-        isOwner: ownerOfCabinets || isSpecialAdmin,
-        role: "dentiste"
-      });
-      
-      if (success) {
-        console.log("Successfully updated cabinet association and admin status");
-        
-        toast.success("Vos droits d'administrateur ont été restaurés. Veuillez rafraîchir la page.", {
-          duration: 6000,
-          action: {
-            label: "Rafraîchir",
-            onClick: () => window.location.reload()
-          }
-        });
-      }
+    switch (error.type) {
+      case 'auth':
+        // Try to refresh the token
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.error("Failed to refresh auth session:", refreshError);
+          return false;
+        }
+        return true;
+
+      case 'database':
+        // For database errors, could retry the transaction (not implemented here)
+        return false;
+
+      case 'network':
+        // For network errors, we could retry the request after a delay
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        return true;
+
+      case 'storage':
+        // Storage errors often require user intervention
+        return false;
+
+      default:
+        return false;
     }
-  } catch (directError) {
-    console.error("Error in handleRecursionError:", directError);
+  } catch (recoveryError) {
+    console.error("Error during recovery attempt:", recoveryError);
+    return false;
   }
 };
 
-// Create a team member entry for a cabinet owner
-export const createTeamMemberForOwner = async (userId: string, userEmail: string, cabinetId: string): Promise<void> => {
+/**
+ * Create or associate user with cabinet - string parameter version
+ */
+export const createOrAssociateUserWithCabinet = async (cabinetId: string): Promise<boolean> => {
   try {
-    // Extract first and last name from email
-    let firstName = userEmail.split('@')[0];
-    let lastName = "";
+    // Get the current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
     
-    // Try to extract a proper name if possible
-    const nameParts = firstName.split(/[._-]/);
-    if (nameParts.length > 1) {
-      firstName = nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1);
-      lastName = nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1);
-    } else {
-      firstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
-    }
-    
-    // Try to create team member via edge function
-    try {
-      const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke('create-team-member', {
-        body: {
-          memberData: {
-            first_name: firstName,
-            last_name: lastName,
-            role: "dentiste",
-            contact: userEmail,
-            is_admin: true,
-            is_owner: true,
-            cabinet_id: cabinetId,
-            user_id: userId
-          },
-          email: userEmail,
-          firstName: firstName,
-          lastName: lastName || "",
-          authUserId: userId
-        }
-      });
-      
-      if (edgeFunctionError) {
-        console.error("Error from edge function:", edgeFunctionError);
-        // Fall back to direct DB method
-        await ensureUserCabinetAssociation(cabinetId, {
-          firstName, 
-          lastName: lastName || "", 
-          email: userEmail,
-          isAdmin: true,
-          isOwner: true
-        });
-      } else {
-        console.log("Auto-created team member with admin rights:", edgeFunctionData);
-        
-        toast.success("Vos droits d'administrateur ont été restaurés. Veuillez rafraîchir la page.", {
-          duration: 6000,
-          action: {
-            label: "Rafraîchir",
-            onClick: () => window.location.reload()
-          }
-        });
-      }
-    } catch (edgeFunctionException) {
-      console.error("Exception when calling edge function:", edgeFunctionException);
-      // Fall back to direct DB method
-      await ensureUserCabinetAssociation(cabinetId, {
-        firstName, 
-        lastName: lastName || "", 
-        email: userEmail,
-        isAdmin: true,
-        isOwner: true
-      });
-    }
+    // Ensure the user is associated with the cabinet
+    const result = await ensureUserCabinetAssociation(user.id);
+    return !!result;
   } catch (error) {
-    console.error("Error in createTeamMemberForOwner:", error);
+    console.error("Error in createOrAssociateUserWithCabinet:", error);
+    return false;
   }
 };
 
-// Update an existing team member to have admin status
-export const updateTeamMemberAdminStatus = async (memberId: string, cabinetId: string): Promise<void> => {
+/**
+ * This function is used to create a new team member
+ */
+export const createTeamMember = async (cabinetId: string): Promise<boolean> => {
   try {
-    // Try to update the existing team member to be an admin
-    const { error: updateError } = await supabase
-      .from('team_members')
-      .update({ 
-        is_admin: true, 
-        is_owner: true,
-        cabinet_id: cabinetId
-      })
-      .eq('id', memberId);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
     
-    if (updateError) {
-      console.error("Error updating team member to admin:", updateError);
-      
-      // If we got a recursion error, we need to try a different approach
-      if (updateError.message?.includes('infinite recursion') || updateError.code === '42P17') {
-        // We'll use our user session data to find the right information
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && session.user) {
-          const userId = session.user.id;
-          const userEmail = session.user.email;
-          
-          if (userEmail) {
-            // Extract first and last name from email
-            let firstName = userEmail.split('@')[0];
-            let lastName = "";
-            
-            // Try to extract a proper name if possible
-            const nameParts = firstName.split(/[._-]/);
-            if (nameParts.length > 1) {
-              firstName = nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1);
-              lastName = nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1);
-            } else {
-              firstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
-            }
-            
-            // Use our direct database method
-            await ensureUserCabinetAssociation(cabinetId, {
-              firstName, 
-              lastName: lastName || "", 
-              email: userEmail,
-              isAdmin: true,
-              isOwner: true
-            });
-          }
-        }
-      }
-    } else {
-      console.log("Updated user to admin successfully");
-      
-      toast.success("Vos droits d'administrateur ont été restaurés. Veuillez rafraîchir la page.", {
-        duration: 6000,
-        action: {
-          label: "Rafraîchir",
-          onClick: () => window.location.reload()
-        }
-      });
+    const { error } = await supabase.from('team_members').insert({
+      first_name: "Nouveau",
+      last_name: "Membre",
+      role: "dentiste",
+      cabinet_id: cabinetId,
+      contact: user.email,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+    
+    if (error) {
+      console.error("Error creating team member:", error);
+      return false;
     }
+    
+    return true;
   } catch (error) {
-    console.error("Error in updateTeamMemberAdminStatus:", error);
+    console.error("Error in createTeamMember:", error);
+    return false;
+  }
+};
+
+/**
+ * Handle errors related to document uploads
+ */
+export const handleDocumentUploadError = async (error: any): Promise<string> => {
+  const errorInfo = processError(error);
+  
+  // Log the error for debugging
+  console.error("Document upload error:", errorInfo);
+  
+  // Return a user-friendly message
+  switch (errorInfo.type) {
+    case 'storage':
+      return "Erreur lors du téléchargement du document. Veuillez vérifier la taille et le format du fichier.";
+    case 'auth':
+      return "Vous devez être connecté pour télécharger des documents.";
+    case 'network':
+      return "Erreur de connexion. Veuillez vérifier votre connexion internet et réessayer.";
+    default:
+      return "Une erreur est survenue lors du téléchargement. Veuillez réessayer.";
+  }
+};
+
+/**
+ * Check document storage quotas and limits
+ */
+export const checkDocumentStorageLimits = async (fileSize: number, cabinetId: string): Promise<{ allowed: boolean; message: string }> => {
+  try {
+    // Get total storage used
+    const { data, error } = await supabase
+      .from('documents')
+      .select('size')
+      .eq('cabinet_id', cabinetId);
+    
+    if (error) {
+      console.error("Error checking storage limits:", error);
+      return { allowed: true, message: "" }; // Allow upload on error to avoid blocking user
+    }
+    
+    // Calculate total size in bytes
+    const totalSizeBytes = data.reduce((sum, doc) => sum + (doc.size || 0), 0);
+    
+    // Check against limit (e.g., 1GB = 1,073,741,824 bytes)
+    const storageLimitBytes = 1073741824;
+    
+    if (totalSizeBytes + fileSize > storageLimitBytes) {
+      return {
+        allowed: false,
+        message: "Vous avez atteint votre limite de stockage. Veuillez supprimer d'anciens documents."
+      };
+    }
+    
+    return { allowed: true, message: "" };
+  } catch (error) {
+    console.error("Error in checkDocumentStorageLimits:", error);
+    return { allowed: true, message: "" }; // Allow upload on error
   }
 };

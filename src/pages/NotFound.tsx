@@ -9,10 +9,39 @@ const NotFound = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if this is a direct page load and not a navigation from within the app
+    const isDirectPageLoad = !window.performance
+      .getEntriesByType("navigation")
+      .some((nav: any) => nav.type === "navigate");
+
+    // Log the not found attempt
     console.warn(
       "Page non trouvée : L'utilisateur a tenté d'accéder à une route inexistante :",
       location.pathname
     );
+
+    // For direct loads on valid routes, try to reload once
+    if (isDirectPageLoad) {
+      const validRoutes = [
+        "/planning", "/equipe", "/patients", "/operations", 
+        "/documents", "/boites-a-outils", "/centre-aide", 
+        "/outils-ia", "/parametres", "/auth"
+      ];
+      
+      // Check if this path (without query params) is a valid route
+      const currentPath = location.pathname.split('?')[0];
+      if (validRoutes.includes(currentPath) || 
+          validRoutes.some(route => currentPath.startsWith(route + '/'))) {
+        // Attempt to reload the page once to fix issues with direct loads
+        localStorage.setItem('attemptedReload', 'true');
+        if (localStorage.getItem('attemptedReload') === 'true') {
+          localStorage.removeItem('attemptedReload');
+          window.location.href = '/';
+        } else {
+          window.location.reload();
+        }
+      }
+    }
   }, [location.pathname]);
 
   const goBack = () => {

@@ -62,7 +62,7 @@ export const useUserData = () => {
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des données utilisateur:", error);
-      toast({
+      toast.default({
         title: "Erreur",
         description: "Impossible de récupérer vos informations. Veuillez vous reconnecter.",
         variant: "destructive",

@@ -22,7 +22,7 @@ const TaskManagement = () => {
     setNewTask,
     isLoading,
     handleAddTask,
-    handleUpdateTaskStatus,
+    updateTaskStatus,
     handleDeleteTask,
     teamMembers
   } = useTaskManagement();
@@ -217,7 +217,7 @@ const TaskManagement = () => {
                 <Select
                   value={task.status}
                   onValueChange={(value) => {
-                    handleUpdateTaskStatus(task.id, value as "pending" | "in-progress" | "completed");
+                    updateTaskStatus(task.id, value as "pending" | "in-progress" | "completed");
                   }}
                 >
                   <SelectTrigger className="w-[140px]">

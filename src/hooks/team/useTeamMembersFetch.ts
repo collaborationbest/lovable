@@ -1,10 +1,9 @@
-
 import { useEffect } from "react";
 import { TeamMember } from "@/types/TeamMember";
 import { useToast } from "@/hooks/use-toast";
 import { ACCOUNT_OWNER_EMAIL } from "@/hooks/useAccessControl";
 import { fetchTeamMembers } from "@/utils/team/teamMemberCrud";
-import { ensureAccountOwnerInDatabase } from "@/utils/team/accountOwnerUtils";
+import { ensureAccountOwnerExists } from "@/utils/team/accountOwnerUtils";
 import { useTeamMembersUtils } from "./useTeamMembersUtils";
 
 type TeamMembersStateProps = {
@@ -39,16 +38,10 @@ export function useTeamMembersFetch(
           const ownerData = {
             firstName: owner.firstName,
             lastName: owner.lastName,
-            role: owner.role,
-            contact: owner.contact,
-            location: owner.location || "",
-            currentProjects: owner.currentProjects || [],
-            isAdmin: true,
-            isOwner: true, // Set as owner for cabinet 126
-            specialty: owner.specialty,
-            cabinet_id: "126" // Explicitly set cabinet ID to 126
+            email: owner.contact,
+            userId: owner.id
           };
-          await ensureAccountOwnerInDatabase(ownerData);
+          await ensureAccountOwnerExists("126", ownerData);
           console.log("Owner database operation complete");
         } else {
           console.log("No owner found in initial members");

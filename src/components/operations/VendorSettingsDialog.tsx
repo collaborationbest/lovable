@@ -1,11 +1,10 @@
-
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Trash2, ChevronDown, ChevronUp, UserRound } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import useLocalStorage from "@/hooks/useLocalStorage";
 
 export interface SalesRep {
@@ -42,16 +41,10 @@ const VendorSettingsDialog = ({ open, onOpenChange }: VendorSettingsDialogProps)
     }
   });
   const [expandedVendors, setExpandedVendors] = useState<Record<string, boolean>>({});
-  
-  const { toast } = useToast();
 
   const handleAddVendor = () => {
     if (!newVendor.name.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Le nom du fournisseur est requis",
-        variant: "destructive"
-      });
+      toast.error("Le nom du fournisseur est requis");
       return;
     }
 
@@ -73,10 +66,7 @@ const VendorSettingsDialog = ({ open, onOpenChange }: VendorSettingsDialogProps)
       }
     });
 
-    toast({
-      title: "Fournisseur ajouté",
-      description: `${vendor.name} a été ajouté à la liste des fournisseurs.`
-    });
+    toast.success(`${vendor.name} a été ajouté à la liste des fournisseurs.`);
   };
 
   const handleDeleteVendor = (id: string) => {
@@ -85,10 +75,7 @@ const VendorSettingsDialog = ({ open, onOpenChange }: VendorSettingsDialogProps)
     
     setVendors(vendors.filter(v => v.id !== id));
     
-    toast({
-      title: "Fournisseur supprimé",
-      description: `${vendor.name} a été supprimé de la liste des fournisseurs.`
-    });
+    toast.success(`${vendor.name} a été supprimé de la liste des fournisseurs.`);
   };
 
   const toggleVendorDetails = (id: string) => {

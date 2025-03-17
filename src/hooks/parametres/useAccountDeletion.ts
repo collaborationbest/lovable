@@ -17,7 +17,7 @@ export const useAccountDeletion = () => {
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmation !== "SUPPRIMER") {
-      toast({
+      toast.default({
         title: "Confirmation invalide",
         description: "Veuillez saisir 'SUPPRIMER' pour confirmer.",
         variant: "destructive",
@@ -28,16 +28,22 @@ export const useAccountDeletion = () => {
     try {
       setIsDeleting(true);
       
-      // Explicitly type this to avoid deep instantiation
-      const { error } = await supabase.auth.admin.deleteUser(
-        (await supabase.auth.getUser()).data.user?.id || ''
-      );
+      // Get current user
+      const { data } = await supabase.auth.getUser();
+      const userId = data.user?.id;
+      
+      if (!userId) {
+        throw new Error("Utilisateur non connecté");
+      }
+      
+      // Perform the delete operation
+      const { error } = await supabase.auth.admin.deleteUser(userId);
 
       if (error) {
         throw error;
       }
 
-      toast({
+      toast.default({
         title: "Compte supprimé",
         description: "Votre compte a été supprimé avec succès.",
       });
@@ -47,7 +53,7 @@ export const useAccountDeletion = () => {
       navigate("/auth");
     } catch (error: any) {
       console.error("Error deleting account:", error);
-      toast({
+      toast.default({
         title: "Erreur",
         description: error.message || "Une erreur est survenue lors de la suppression du compte.",
         variant: "destructive",

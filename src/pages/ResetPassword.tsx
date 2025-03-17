@@ -1,27 +1,21 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const ResetPassword = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer votre adresse email.",
-        variant: "destructive",
-      });
+      toast.error("Veuillez entrer votre adresse email.");
       return;
     }
 
@@ -38,10 +32,7 @@ const ResetPassword = () => {
         throw error;
       }
 
-      toast({
-        title: "Email envoyé",
-        description: "Vérifiez votre boîte mail pour réinitialiser votre mot de passe.",
-      });
+      toast.success("Vérifiez votre boîte mail pour réinitialiser votre mot de passe.");
       
       // Rediriger vers la page de connexion après 3 secondes
       setTimeout(() => {
@@ -49,11 +40,7 @@ const ResetPassword = () => {
       }, 3000);
       
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la réinitialisation du mot de passe.",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Une erreur est survenue lors de la réinitialisation du mot de passe.");
     } finally {
       setIsLoading(false);
     }

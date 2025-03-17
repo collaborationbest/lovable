@@ -17,7 +17,7 @@ export const useProfileManagement = ({
 }: UseProfileManagementProps) => {
   const handleUpdateProfile = async (firstName: string, lastName: string) => {
     if (!userId) {
-      toast({
+      toast.default({
         title: "Erreur",
         description: "ID utilisateur manquant. Veuillez vous reconnecter.",
         variant: "destructive",
@@ -79,7 +79,7 @@ export const useProfileManagement = ({
           onProfileUpdated(firstName, lastName);
         }
 
-        toast({
+        toast.default({
           title: "Profil mis à jour",
           description: "Vos informations de profil ont été mises à jour avec succès.",
         });
@@ -89,7 +89,7 @@ export const useProfileManagement = ({
       }
     } catch (error: any) {
       console.error("Profile update failed:", error);
-      toast({
+      toast.default({
         title: "Erreur",
         description: error.message || "Une erreur est survenue lors de la mise à jour du profil.",
         variant: "destructive",

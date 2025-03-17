@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import OutilIALayout from "@/components/outils-ia/OutilIALayout";
 import { CreditCard, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,17 +8,59 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Document } from "@/components/documents/types";
 import { getFileIcon, requiredDocumentsList } from "@/components/documents/DocumentsUtils";
+import { getUserCabinetId } from "@/integrations/supabase/cabinetUtils";
+import { handleDocumentUploadError, checkDocumentStorageLimits } from "@/components/ui/AppErrorHandlerUtils";
 
 const Financement = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("simulation");
+  const [cabinetId, setCabinetId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Fetch cabinet ID on component mount
+  useEffect(() => {
+    const fetchCabinetId = async () => {
+      const id = await getUserCabinetId();
+      setCabinetId(id);
+    };
+    fetchCabinetId();
+  }, []);
+
+  // Fetch documents
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      if (!cabinetId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('cabinet_id', cabinetId)
+          .not('document_type', 'is', null);
+          
+        if (error) throw error;
+        
+        setDocuments(data || []);
+      } catch (error) {
+        console.error("Erreur lors du chargement des documents:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les documents",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    if (cabinetId) {
+      fetchDocuments();
+    }
+  }, [cabinetId, toast]);
 
   const handleUploadFiles = async (e: React.ChangeEvent<HTMLInputElement>, documentType?: string) => {
     const files = e.target.files;
     
-    if (!files || files.length === 0) {
+    if (!files || files.length === 0 || !cabinetId) {
       return;
     }
     
@@ -39,15 +82,43 @@ const Financement = () => {
       const uploadedDocuments: Document[] = [];
       
       for (const file of Array.from(files)) {
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          toast({
+            title: "Fichier trop volumineux",
+            description: "La taille maximum acceptée est de 10MB par fichier.",
+            variant: "destructive",
+          });
+          continue;
+        }
+        
+        // Check storage limits
+        const { allowed, message } = await checkDocumentStorageLimits(file.size, cabinetId);
+        if (!allowed) {
+          toast({
+            title: "Limite de stockage atteinte",
+            description: message,
+            variant: "destructive",
+          });
+          break;
+        }
+        
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
         
+        // Upload to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file);
           
         if (uploadError) {
-          throw uploadError;
+          const errorMessage = await handleDocumentUploadError(uploadError);
+          toast({
+            title: "Erreur de téléchargement",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          continue;
         }
         
         const { data: publicUrlData } = supabase.storage
@@ -56,6 +127,7 @@ const Financement = () => {
           
         const publicUrl = publicUrlData.publicUrl;
         
+        // Add record to documents table
         const { data: docData, error: docError } = await supabase
           .from('documents')
           .insert({
@@ -64,12 +136,19 @@ const Financement = () => {
             size: file.size,
             url: publicUrl,
             folder_id: null,
-            document_type: documentType
+            document_type: documentType,
+            cabinet_id: cabinetId
           })
           .select();
           
         if (docError) {
-          throw docError;
+          console.error("Error inserting document record:", docError);
+          toast({
+            title: "Erreur",
+            description: "Le fichier a été téléchargé mais n'a pas pu être enregistré dans la base de données.",
+            variant: "destructive",
+          });
+          continue;
         }
         
         if (docData && docData.length > 0) {
@@ -79,10 +158,12 @@ const Financement = () => {
       
       setDocuments([...documents, ...uploadedDocuments]);
       
-      toast({
-        title: "Fichiers téléchargés",
-        description: `${uploadedDocuments.length} fichier(s) téléchargé(s) avec succès.`
-      });
+      if (uploadedDocuments.length > 0) {
+        toast({
+          title: "Fichiers téléchargés",
+          description: `${uploadedDocuments.length} fichier(s) téléchargé(s) avec succès.`
+        });
+      }
     } catch (error) {
       console.error("Erreur lors du téléchargement des fichiers:", error);
       toast({
@@ -147,25 +228,6 @@ const Financement = () => {
     }
   };
 
-  React.useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('documents')
-          .select('*')
-          .not('document_type', 'is', null);
-          
-        if (error) throw error;
-        
-        setDocuments(data || []);
-      } catch (error) {
-        console.error("Erreur lors du chargement des documents:", error);
-      }
-    };
-    
-    fetchDocuments();
-  }, []);
-
   return (
     <OutilIALayout
       title="Financer le Projet"
@@ -196,13 +258,21 @@ const Financement = () => {
         </TabsContent>
 
         <TabsContent value="documents" className="mt-0">
-          <RequiredDocumentsList
-            requiredDocuments={requiredDocumentsList}
-            documents={documents}
-            handleUploadFiles={handleUploadFiles}
-            handleDeleteItem={handleDeleteItem}
-            getFileIcon={getFileIcon}
-          />
+          {!cabinetId ? (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-amber-800">
+                Chargement des informations du cabinet...
+              </p>
+            </div>
+          ) : (
+            <RequiredDocumentsList
+              requiredDocuments={requiredDocumentsList}
+              documents={documents}
+              handleUploadFiles={handleUploadFiles}
+              handleDeleteItem={handleDeleteItem}
+              getFileIcon={getFileIcon}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </OutilIALayout>

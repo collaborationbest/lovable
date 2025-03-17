@@ -114,7 +114,7 @@ const CustomSignupForm: React.FC = () => {
         }
         
         setSignupSuccess(true);
-        toast({
+        toast.default({
           title: "Inscription réussie",
           description: "Veuillez confirmer votre email pour activer votre compte.",
         });

@@ -7,6 +7,9 @@ import { ensureUserCabinetAssociation } from './cabinetUtils';
 const SUPABASE_URL = "https://jhfvlccefrzuojvaoilz.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZnZsY2NlZnJ6dW9qdmFvaWx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2MDY3NzcsImV4cCI6MjA1NjE4Mjc3N30.3PnGkLaonvbP7VvGbxIxxPxo0ztoAg9uPk23trH2PYs";
 
+// Define the current app URL for redirection purposes
+export const APP_URL = "https://preview-ac299eea--dentalpilote-4b097d7a.lovable.app";
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 

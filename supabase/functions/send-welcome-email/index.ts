@@ -27,11 +27,13 @@ serve(async (req) => {
     // Get Supabase credentials from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     const resendApiKey = RESEND_API_KEY;
     
     console.log("Environment variables available:");
     console.log("- SUPABASE_URL:", !!supabaseUrl);
     console.log("- SUPABASE_SERVICE_ROLE_KEY:", !!supabaseServiceRoleKey);
+    console.log("- SUPABASE_ANON_KEY:", !!supabaseAnonKey);
     console.log("- RESEND_API_KEY:", !!resendApiKey);
     
     if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -75,46 +77,19 @@ serve(async (req) => {
     const safeFirstName = firstName || email.split('@')[0];
     const safeLastName = lastName || '';
     
-    // Create user in Supabase Auth
-    console.log(`Creating user with email ${email}...`);
+    // Send welcome email directly without trying to create/verify user
+    // This function should only focus on sending the email with the credentials provided
     
-    // First check if user already exists
-    const { data: existingUsers, error: listError } = await supabaseClient.auth.admin.listUsers({
-      filter: `email.eq.${email}`
-    });
-    
-    let userId = null;
-    
-    if (listError) {
-      console.error("Error checking for existing user:", listError);
-    } else if (existingUsers && existingUsers.users && existingUsers.users.length > 0) {
-      console.log(`User with email ${email} already exists with ID: ${existingUsers.users[0].id}`);
-      userId = existingUsers.users[0].id;
-    } else {
-      // Create new user if doesn't exist
-      const { data: userData, error: createError } = await supabaseClient.auth.admin.createUser({
-        email: email,
-        password: temporaryPassword,
-        email_confirm: true,
-        user_metadata: { 
-          first_name: safeFirstName,
-          last_name: safeLastName,
-          full_name: `${safeFirstName} ${safeLastName}`.trim()
-        }
-      });
-      
-      if (createError) {
-        console.error("Error creating user:", createError);
-        throw createError;
-      }
-      
-      console.log(`User created successfully with ID: ${userData.user.id}`);
-      userId = userData.user.id;
-    }
-    
-    // Send welcome email via Resend API
     console.log("Sending welcome email...");
     const resendEndpoint = "https://api.resend.com/emails";
+    
+    // Update the URL to the new preview URL
+    const currentPreviewUrl = "https://preview-ac299eea--dentalpilote-4b097d7a.lovable.app";
+    
+    // If loginUrl contains the old preview URL, replace it with the new one
+    const updatedLoginUrl = loginUrl.includes("preview--dentalpilote.lovable.app") 
+      ? currentPreviewUrl + "/auth" 
+      : loginUrl;
     
     const emailResponse = await fetch(resendEndpoint, {
       method: 'POST',
@@ -138,7 +113,7 @@ serve(async (req) => {
               <p><em>Nous vous recommandons de changer votre mot de passe après votre première connexion.</em></p>
             </div>
             <p style="text-align: center;">
-              <a href="${loginUrl}" style="display: inline-block; background-color: #4D74CB; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: bold;">
+              <a href="${updatedLoginUrl}" style="display: inline-block; background-color: #4D74CB; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: bold;">
                 Se connecter maintenant
               </a>
             </p>
@@ -157,23 +132,6 @@ serve(async (req) => {
     
     if (!emailResponse.ok) {
       console.error("Error sending email through Resend API:", emailResult);
-      // Return a response with partial success if we created the user but email failed
-      if (userId) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            userId: userId,
-            emailSent: false,
-            message: "User created but email sending failed",
-            debug: {
-              emailError: emailResult,
-              statusCode: emailResponse.status
-            }
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
       throw new Error(`Failed to send email: ${JSON.stringify(emailResult)}`);
     }
     
@@ -181,9 +139,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        userId: userId,
         emailSent: true,
-        message: "User created and welcome email sent successfully",
+        message: "Welcome email sent successfully",
         debug: {
           emailId: emailResult.id
         }

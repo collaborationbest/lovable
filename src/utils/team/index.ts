@@ -3,11 +3,10 @@ import { TeamMember } from "@/types/TeamMember";
 import { createClient } from "@supabase/supabase-js";
 import { getCabinetId } from "./cabinetOwnerUtils";
 import { fetchTeamMembers } from "./teamMemberCrud";
-import { ensureAccountOwnerInDatabase } from "./accountOwnerUtils";
+import { ensureAccountOwnerExists } from "./accountOwnerUtils";
 
 export const getOrCreateCabinet = async (cabinetName: string, ownerEmail: string): Promise<{ id: string; } | null> => {
   try {
-    // Initialize Supabase client
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -18,7 +17,6 @@ export const getOrCreateCabinet = async (cabinetName: string, ownerEmail: string
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if the cabinet already exists
     let { data: cabinets, error: cabinetError } = await supabase
       .from('cabinets')
       .select('id')
@@ -34,7 +32,6 @@ export const getOrCreateCabinet = async (cabinetName: string, ownerEmail: string
       return { id: cabinets[0].id };
     }
 
-    // If the cabinet doesn't exist, create it
     const { data, error } = await supabase
       .from('cabinets')
       .insert([{ name: cabinetName, owner_email: ownerEmail }])
@@ -60,15 +57,18 @@ export const getOrCreateCabinet = async (cabinetName: string, ownerEmail: string
 
 export const ensureCabinetAndAccountOwner = async (cabinetName: string, ownerData: Omit<TeamMember, "id">) => {
   try {
-    // 1. Get or create the cabinet
     const cabinetResult = await getOrCreateCabinet(cabinetName, ownerData.contact as string);
     if (!cabinetResult) {
       console.error("Failed to get or create cabinet.");
       return;
     }
 
-    // 2. Ensure the account owner is in the database
-    await ensureAccountOwnerInDatabase(ownerData);
+    const accountOwnerData = {
+      firstName: ownerData.firstName,
+      lastName: ownerData.lastName,
+      email: ownerData.contact as string
+    };
+    await ensureAccountOwnerExists(cabinetResult.id, accountOwnerData);
 
     console.log("Cabinet and account owner ensured successfully.");
   } catch (error) {

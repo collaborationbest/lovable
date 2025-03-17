@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Settings, Search } from "lucide-react";
 import VendorSettingsDialog, { Vendor } from "./VendorSettingsDialog";
@@ -41,16 +41,10 @@ const OrderManagement = () => {
     notes: "",
     status: "pending"
   });
-  
-  const { toast } = useToast();
 
   const handleAddOrder = () => {
     if (!newOrder.supplierName || !newOrder.productName) {
-      toast({
-        title: "Champs requis",
-        description: "Veuillez remplir tous les champs obligatoires.",
-        variant: "destructive"
-      });
+      toast.error("Veuillez remplir tous les champs obligatoires.");
       return;
     }
     
@@ -71,10 +65,7 @@ const OrderManagement = () => {
     });
     setIsDialogOpen(false);
     
-    toast({
-      title: "Commande ajoutée",
-      description: `La commande de ${order.productName} a été ajoutée.`
-    });
+    toast.success(`La commande de ${order.productName} a été ajoutée.`);
   };
 
   const getStatusLabel = (status: string) => {
@@ -333,10 +324,7 @@ const OrderManagement = () => {
                   size="sm" 
                   onClick={() => {
                     setOrders(orders.filter(o => o.id !== order.id));
-                    toast({
-                      title: "Commande supprimée",
-                      description: `La commande de ${order.productName} a été supprimée.`
-                    });
+                    toast(`La commande de ${order.productName} a été supprimée.`);
                   }}
                 >
                   Supprimer
