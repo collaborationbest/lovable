@@ -50,7 +50,8 @@ export const useAdminTeamMember = () => {
             .update({
               is_admin: true,
               is_owner: true,
-              cabinet_id: cabinetId
+              cabinet_id: cabinetId,
+              updated_at: new Date().toISOString()
             })
             .eq('id', existingTeamMember.id);
             
@@ -67,28 +68,70 @@ export const useAdminTeamMember = () => {
         console.log("No existing team member found, creating new one");
         
         // Try direct insertion first
-        const { data: directInsert, error: directInsertError } = await supabase
-          .from('team_members')
-          .insert({
-            first_name: firstName,
-            last_name: lastName,
-            role: "dentiste",
-            contact: userEmail,
-            is_admin: true,
-            is_owner: true,
-            cabinet_id: cabinetId,
-            user_id: userId
-          })
-          .select()
-          .single();
-        
-        if (directInsertError) {
-          console.error("Direct team member insertion failed:", directInsertError);
-          console.log("Falling back to edge function for team member creation");
+        try {
+          const { data: directInsert, error: directInsertError } = await supabase
+            .from('team_members')
+            .insert({
+              first_name: firstName,
+              last_name: lastName,
+              role: "dentiste",
+              contact: userEmail,
+              is_admin: true,
+              is_owner: true,
+              cabinet_id: cabinetId,
+              user_id: userId,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
           
-          // Fallback to the edge function to bypass RLS issues
+          if (directInsertError) {
+            console.error("Direct team member insertion failed:", directInsertError);
+            console.log("Falling back to edge function for team member creation");
+            
+            // Fallback to the edge function to bypass RLS issues
+            try {
+              const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke('create-team-member', {
+                body: {
+                  memberData: {
+                    first_name: firstName,
+                    last_name: lastName,
+                    role: "dentiste",
+                    contact: userEmail,
+                    is_admin: true,
+                    is_owner: true,
+                    cabinet_id: cabinetId,
+                    user_id: userId,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  },
+                  email: userEmail,
+                  firstName,
+                  lastName,
+                  cabinetId
+                }
+              });
+              
+              if (edgeFunctionError) {
+                console.error("Edge function error:", edgeFunctionError);
+                throw edgeFunctionError;
+              }
+              
+              console.log("Team member created via edge function:", edgeFunctionData);
+            } catch (edgeFunctionException) {
+              console.error("Exception calling edge function:", edgeFunctionException);
+              throw edgeFunctionException;
+            }
+          } else {
+            console.log("Team member created directly:", directInsert);
+          }
+        } catch (insertError) {
+          console.error("Error during team member creation:", insertError);
+          
+          // Try one more approach - call the edge function directly
           try {
-            const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke('create-team-member', {
+            const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('create-team-member', {
               body: {
                 memberData: {
                   first_name: firstName,
@@ -99,25 +142,20 @@ export const useAdminTeamMember = () => {
                   is_owner: true,
                   cabinet_id: cabinetId,
                   user_id: userId
-                },
-                email: userEmail,
-                firstName,
-                lastName
+                }
               }
             });
             
-            if (edgeFunctionError) {
-              console.error("Edge function error:", edgeFunctionError);
-              throw edgeFunctionError;
+            if (fallbackError) {
+              console.error("Fallback edge function error:", fallbackError);
+              throw fallbackError;
             }
             
-            console.log("Team member created via edge function:", edgeFunctionData);
-          } catch (edgeFunctionException) {
-            console.error("Exception calling edge function:", edgeFunctionException);
-            throw edgeFunctionException;
+            console.log("Team member created via fallback edge function call:", fallbackData);
+          } catch (fallbackException) {
+            console.error("Exception in fallback edge function call:", fallbackException);
+            throw fallbackException;
           }
-        } else {
-          console.log("Team member created directly:", directInsert);
         }
       }
       

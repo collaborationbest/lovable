@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { PlusCircle, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import useLocalStorage from "@/hooks/useLocalStorage";
 
 export interface Laboratory {
@@ -28,16 +27,10 @@ const LaboratorySettingsDialog = ({ open, onOpenChange }: LaboratorySettingsDial
     phone: "",
     email: "",
   });
-  
-  const { toast } = useToast();
 
   const handleAddLaboratory = () => {
     if (!newLaboratory.name) {
-      toast({
-        title: "Nom requis",
-        description: "Le nom du laboratoire est obligatoire",
-        variant: "destructive"
-      });
+      toast.error("Le nom du laboratoire est obligatoire");
       return;
     }
     
@@ -53,18 +46,12 @@ const LaboratorySettingsDialog = ({ open, onOpenChange }: LaboratorySettingsDial
       email: "",
     });
     
-    toast({
-      title: "Laboratoire ajouté",
-      description: `Le laboratoire ${laboratory.name} a été ajouté.`
-    });
+    toast.success(`Le laboratoire ${laboratory.name} a été ajouté.`);
   };
 
   const handleDeleteLaboratory = (id: string) => {
     setLaboratories(laboratories.filter(lab => lab.id !== id));
-    toast({
-      title: "Laboratoire supprimé",
-      description: "Le laboratoire a été supprimé avec succès."
-    });
+    toast.success("Le laboratoire a été supprimé avec succès.");
   };
 
   return (

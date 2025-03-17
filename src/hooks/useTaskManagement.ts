@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +34,6 @@ export function useTaskManagement() {
   
   const { toast } = useToast();
   
-  // Initialize with only one instance of the account owner
   const initialOwner = {
     id: "owner",
     firstName: "Raphael",
@@ -47,7 +47,6 @@ export function useTaskManagement() {
     specialty: "omnipratique" as "omnipratique"
   };
   
-  // Only pass one instance of the owner
   const { teamMembers } = useTeamMembers([initialOwner]);
 
   console.log("TeamMembers in useTaskManagement hook:", teamMembers);
@@ -128,7 +127,7 @@ export function useTaskManagement() {
         description: data.description || "",
         assigneeId: data.assignee_id,
         category: data.category,
-        status: data.status,
+        status: data.status as TaskStatus, // Fixed: Cast to TaskStatus
         dueDate: data.due_date,
       };
       
@@ -159,27 +158,28 @@ export function useTaskManagement() {
     }
   };
 
-  const handleUpdateTaskStatus = async (id: string, status: TaskStatus) => {
+  const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
     try {
+      const validStatus: TaskStatus = ["pending", "in-progress", "completed"].includes(status as TaskStatus) 
+        ? status 
+        : "pending";
+      
       const { error } = await supabase
         .from('tasks')
-        .update({ status })
-        .eq('id', id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      setTasks(tasks.map(t => 
-        t.id === id ? { ...t, status } : t
-      ));
-    } catch (error: any) {
+        .update({ status: validStatus, updated_at: new Date().toISOString() })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      const updatedTasks = tasks.map(task =>
+        task.id === taskId ? { ...task, status: validStatus } : task
+      );
+      setTasks(updatedTasks);
+
+      return true;
+    } catch (error) {
       console.error("Error updating task status:", error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la mise à jour du statut.",
-        variant: "destructive"
-      });
+      return false;
     }
   };
 
@@ -235,7 +235,7 @@ export function useTaskManagement() {
     setNewTask,
     isLoading,
     handleAddTask,
-    handleUpdateTaskStatus,
+    updateTaskStatus,
     handleDeleteTask,
     teamMembers
   };

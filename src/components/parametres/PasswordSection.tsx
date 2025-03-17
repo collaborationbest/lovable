@@ -20,7 +20,7 @@ const PasswordSection = ({ loading, setLoading }: PasswordSectionProps) => {
     e.preventDefault();
     
     if (newPassword !== confirmPassword) {
-      toast({
+      toast.default({
         title: "Erreur",
         description: "Les mots de passe ne correspondent pas.",
         variant: "destructive",
@@ -29,7 +29,7 @@ const PasswordSection = ({ loading, setLoading }: PasswordSectionProps) => {
     }
     
     if (newPassword.length < 6) {
-      toast({
+      toast.default({
         title: "Erreur",
         description: "Le nouveau mot de passe doit contenir au moins 6 caractères.",
         variant: "destructive",
@@ -49,12 +49,12 @@ const PasswordSection = ({ loading, setLoading }: PasswordSectionProps) => {
       setNewPassword("");
       setConfirmPassword("");
       
-      toast({
+      toast.default({
         title: "Mot de passe mis à jour",
         description: "Votre mot de passe a été modifié avec succès.",
       });
     } catch (error: any) {
-      toast({
+      toast.default({
         title: "Erreur",
         description: error.message || "Une erreur est survenue lors de la mise à jour du mot de passe.",
         variant: "destructive",

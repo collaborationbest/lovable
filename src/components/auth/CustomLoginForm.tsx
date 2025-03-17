@@ -7,7 +7,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 
 interface CustomLoginFormProps {
@@ -45,14 +44,9 @@ const CustomLoginForm: React.FC<CustomLoginFormProps> = ({ confirmationSuccess, 
         return;
       }
       
-      if (data?.user) {
-        toast({
-          title: "Connexion réussie",
-          description: "Bienvenue sur DentalPilote !",
-        });
-        
-        // Redirect handled by Auth component via useAuthState hook
-      }
+      // Success will be handled by AuthStatusObserver
+      console.log("Login successful, will be redirected by Auth component");
+      // No navigation here - Auth component will handle the redirect
     } catch (error: any) {
       console.error("Exception during login:", error);
       setLoginError(error.message || "Une erreur inattendue est survenue");

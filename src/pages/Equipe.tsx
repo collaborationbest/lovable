@@ -76,4 +76,3 @@ const Equipe = () => {
 };
 
 export default Equipe;
-

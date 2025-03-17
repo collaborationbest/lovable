@@ -33,11 +33,13 @@ export const useAuthState = () => {
     
     const checkAuth = async () => {
       try {
+        console.log("Checking authentication status...");
         // Récupérer la session actuelle
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
           // Aucune session trouvée
+          console.log("No session found");
           if (isMounted) {
             setState({
               isLoading: false,
@@ -54,6 +56,7 @@ export const useAuthState = () => {
         const { data: userData, error } = await supabase.auth.getUser();
         
         if (error || !userData.user) {
+          console.log("Error getting user or user not found:", error);
           if (isMounted) {
             setState({
               isLoading: false,
@@ -65,6 +68,8 @@ export const useAuthState = () => {
           }
         } else {
           const forcePasswordChange = !!userData.user.user_metadata?.forcePasswordChange;
+          console.log("User authenticated:", userData.user.email);
+          console.log("Force password change:", forcePasswordChange);
           
           if (isMounted) {
             setState({
@@ -77,6 +82,7 @@ export const useAuthState = () => {
           }
         }
       } catch (error) {
+        console.error("Error checking auth state:", error);
         if (isMounted) {
           setState({
             isLoading: false,
@@ -94,6 +100,7 @@ export const useAuthState = () => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state change:", event);
         if (event === 'SIGNED_OUT') {
           if (isMounted) {
             setState({
@@ -104,6 +111,17 @@ export const useAuthState = () => {
             });
           }
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (isMounted && session) {
+            const forcePasswordChange = !!session.user.user_metadata?.forcePasswordChange;
+            
+            setState({
+              isLoading: false,
+              isAuthenticated: true,
+              user: session.user,
+              forcePasswordChange
+            });
+          }
+        } else if (event === 'USER_UPDATED') {
           if (isMounted && session) {
             const forcePasswordChange = !!session.user.user_metadata?.forcePasswordChange;
             

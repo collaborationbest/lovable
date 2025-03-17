@@ -6,8 +6,8 @@ import { calculateTimeLeft } from "@/utils/dateUtils";
 import { setupItems } from "@/data/checklistData";
 import { Doctor } from "@/types/Doctor";
 import { ChecklistItem } from "@/types/ChecklistItem";
-import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "sonner";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -31,7 +31,6 @@ const Index = () => {
   // État de l'interface
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
   const [timeLeft, setTimeLeft] = useState<{days: number, months: number} | null>(null);
-  const { toast } = useToast();
   
   // Utilisation du hook pour vérifier le profil
   const { isLoading, showCabinetProfile } = useProfileCheck({ doctors });
@@ -100,17 +99,10 @@ const Index = () => {
         console.log("Sauvegarde du profil sur le serveur pour l'utilisateur:", session.user.id);
       }
       
-      toast({
-        title: "Profil du Cabinet enregistré",
-        description: "Les informations de votre cabinet ont été enregistrées avec succès.",
-      });
+      toast.success("Les informations de votre cabinet ont été enregistrées avec succès.");
     } catch (error) {
       console.error("Erreur lors de la sauvegarde du profil:", error);
-      toast({
-        title: "Erreur de sauvegarde",
-        description: "Une erreur est survenue lors de l'enregistrement du profil.",
-        variant: "destructive"
-      });
+      toast.error("Une erreur est survenue lors de l'enregistrement du profil.");
     }
   };
 
@@ -147,10 +139,7 @@ const Index = () => {
     // Afficher à nouveau le dialogue de profil
     setShowProfile(true);
     
-    toast({
-      title: "Application réinitialisée",
-      description: "Toutes les données ont été effacées. Vous pouvez maintenant recommencer.",
-    });
+    toast.success("Toutes les données ont été effacées. Vous pouvez maintenant recommencer.");
   };
 
   // Afficher un loader pendant la vérification de l'état

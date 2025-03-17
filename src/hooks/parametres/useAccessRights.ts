@@ -72,7 +72,7 @@ export const useAccessRights = () => {
               return { ...page, roles: page.roles.filter(r => r !== selectedRole) };
             } else {
               // Show toast if this is the last role with access
-              toast({
+              toast.default({
                 title: "Action non autorisée",
                 description: "Au moins un rôle doit avoir accès à cette page.",
                 variant: "destructive"
@@ -116,13 +116,13 @@ export const useAccessRights = () => {
       // Also update local storage
       setLocalAccessRights(accessRights);
 
-      toast({
+      toast.default({
         title: "Droits d'accès mis à jour",
         description: "Les modifications ont été enregistrées avec succès."
       });
     } catch (error) {
       console.error("Error saving access rights:", error);
-      toast({
+      toast.default({
         title: "Erreur",
         description: "Une erreur est survenue lors de la sauvegarde des droits d'accès.",
         variant: "destructive"

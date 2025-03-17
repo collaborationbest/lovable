@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const MagicLink = () => {
   const [newPassword, setNewPassword] = useState("");
@@ -14,7 +13,6 @@ const MagicLink = () => {
   const [isProcessingLink, setIsProcessingLink] = useState(true);
   const [hasError, setHasError] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     // Vérifier si la page est chargée via un magic link ou un reset password
@@ -28,36 +26,32 @@ const MagicLink = () => {
 
         // First, attempt to get the current session
         const { data, error } = await supabase.auth.getSession();
-        console.log("isPasswordReset", isPasswordReset);
+        
         if (error) {
           throw error;
         }
-
+        
         // If there's no active session or we have a password reset hash/query
         if (!data.session || isPasswordReset) {
           // Process the URL hash/query for auth purposes
           const query = window.location.search;
-
+          
           if (!hash && !query) {
             // No auth parameters found
             setIsProcessingLink(false);
             setHasError(true);
-            toast({
-              title: "Erreur",
-              description: "Lien invalide ou expiré. Veuillez demander un nouveau lien.",
-              variant: "destructive",
-            });
+            toast.error("Lien invalide ou expiré. Veuillez demander un nouveau lien.");
             return;
           }
-
+          
           // Exchange token in URL for session
           try {
             const { data: authData, error: authError } = await supabase.auth.getSession();
-
+            
             if (authError) {
               throw authError;
             }
-
+            
             // Now we have processed the auth parameters
             setIsProcessingLink(false);
 
@@ -72,15 +66,11 @@ const MagicLink = () => {
             console.error("Erreur lors de la récupération de session:", signInError);
             setIsProcessingLink(false);
             setHasError(true);
-            toast({
-              title: "Erreur",
-              description: "Lien invalide ou expiré. Veuillez demander un nouveau lien.",
-              variant: "destructive",
-            });
+            toast.error("Lien invalide ou expiré. Veuillez demander un nouveau lien.");
           }
         } else {
           // User already had a valid session
-
+          
           // Check if this is a password reset - if so, stay on page to allow password change
           if (isPasswordReset) {
             setIsProcessingLink(false);
@@ -94,65 +84,46 @@ const MagicLink = () => {
         console.error("Erreur lors de la vérification de session:", error);
         setIsProcessingLink(false);
         setHasError(true);
-        toast({
-          title: "Erreur",
-          description: "Une erreur est survenue. Veuillez réessayer.",
-          variant: "destructive",
-        });
+        toast.error("Une erreur est survenue. Veuillez réessayer.");
       }
     };
-
+    
     checkSession();
-  }, [navigate, toast]);
+  }, [navigate]);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (newPassword !== confirmPassword) {
-      toast({
-        title: "Erreur",
-        description: "Les mots de passe ne correspondent pas.",
-        variant: "destructive",
-      });
+      toast.error("Les mots de passe ne correspondent pas.");
       return;
     }
-
+    
     if (newPassword.length < 6) {
-      toast({
-        title: "Erreur",
-        description: "Le mot de passe doit contenir au moins 6 caractères.",
-        variant: "destructive",
-      });
+      toast.error("Le mot de passe doit contenir au moins 6 caractères.");
       return;
     }
-
+    
     try {
       setIsLoading(true);
-
+      
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
       });
-
+      
       if (error) {
         throw error;
       }
-
-      toast({
-        title: "Mot de passe mis à jour",
-        description: "Votre mot de passe a été modifié avec succès.",
-      });
-
+      
+      toast.success("Votre mot de passe a été modifié avec succès.");
+      
       // Rediriger vers la page d'accueil après 2 secondes
       setTimeout(() => {
         navigate("/");
       }, 2000);
-
+      
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la mise à jour du mot de passe.",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Une erreur est survenue lors de la mise à jour du mot de passe.");
     } finally {
       setIsLoading(false);
     }
@@ -183,7 +154,7 @@ const MagicLink = () => {
           <p className="text-muted-foreground mb-6">
             Le lien que vous avez utilisé est invalide ou a expiré.
           </p>
-          <Button
+          <Button 
             onClick={() => navigate("/reset-password")}
             className="bg-[#B88E23] hover:bg-[#927219]"
           >
@@ -200,36 +171,36 @@ const MagicLink = () => {
         <h1 className="text-2xl font-semibold text-[#5C4E3D] mb-6 text-center">
           Définir un nouveau mot de passe
         </h1>
-
+        
         <form onSubmit={handleUpdatePassword} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="new-password">Nouveau mot de passe</Label>
-            <Input
+            <Input 
               id="new-password"
-              type="password"
-              value={newPassword}
+              type="password" 
+              value={newPassword} 
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Entrez votre nouveau mot de passe"
               disabled={isLoading}
               required
             />
           </div>
-
+          
           <div className="space-y-2">
             <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
-            <Input
+            <Input 
               id="confirm-password"
-              type="password"
-              value={confirmPassword}
+              type="password" 
+              value={confirmPassword} 
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirmez votre nouveau mot de passe"
               disabled={isLoading}
               required
             />
           </div>
-
-          <Button
-            type="submit"
+          
+          <Button 
+            type="submit" 
             className="w-full bg-[#B88E23] hover:bg-[#927219]"
             disabled={isLoading}
           >
