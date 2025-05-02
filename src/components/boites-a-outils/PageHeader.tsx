@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogTrigger } from "@/components/ui/dialog";
 import { Briefcase, Plus, Search } from "lucide-react";
+import { PageHeader as MainPageHeader } from "@/components/layout/PageHeader";
 
 interface PageHeaderProps {
   searchQuery: string;
@@ -12,17 +13,13 @@ interface PageHeaderProps {
 
 const PageHeader = ({ searchQuery, onSearchChange }: PageHeaderProps) => {
   return (
-    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
-      <div className="flex items-center gap-4 mb-4 md:mb-0">
-        <div className="h-12 w-12 rounded-full bg-[#f5f2ee] flex items-center justify-center text-[#B88E23]">
-          <Briefcase size={24} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-[#5C4E3D]">Boites à outils</h1>
-          <p className="text-[#5C4E3D]/70">Gérez vos contacts professionnels clés</p>
-        </div>
-      </div>
-      <div className="flex gap-3 w-full md:w-auto">
+    <>
+      <MainPageHeader 
+        title="Boites à outils" 
+        icon={<Briefcase size={20} />}
+      />
+      
+      <div className="flex gap-3 w-full mb-6 mt-6">
         <div className="relative flex-1 md:w-64">
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#5C4E3D]/50" />
           <Input
@@ -39,7 +36,7 @@ const PageHeader = ({ searchQuery, onSearchChange }: PageHeaderProps) => {
           </Button>
         </DialogTrigger>
       </div>
-    </div>
+    </>
   );
 };
 
