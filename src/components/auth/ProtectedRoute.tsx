@@ -1,188 +1,169 @@
 
-import { ReactNode, useEffect, useState, useRef } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Spinner } from "@/components/ui/spinner";
+import { useAccessControl } from "@/hooks/access-control";
+import { usePageAccess } from "@/hooks/access-control/usePageAccess";
 import { toast } from "sonner";
-
-// Simple auth state cache for ProtectedRoute
-const authCache = {
-  isAuthenticated: null as boolean | null,
-  timestamp: 0,
-  // Cache expiration in milliseconds (5 minutes)
-  expirationTime: 5 * 60 * 1000
-};
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  pageId?: string;
+  requiresAuth?: boolean;
+  requiresAdmin?: boolean;
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(
-    // Initialize from cache if available and not expired
-    () => {
-      const now = Date.now();
-      if (authCache.isAuthenticated !== null && now - authCache.timestamp < authCache.expirationTime) {
-        console.info("ProtectedRoute: Using cached auth state", authCache.isAuthenticated);
-        return authCache.isAuthenticated;
-      }
-      return null;
-    }
-  );
-  
-  const authCheckComplete = useRef(false);
+const ProtectedRoute = ({
+  children,
+  pageId = "dashboard", // Default page ID
+  requiresAuth = true,
+  requiresAdmin = false
+}: ProtectedRouteProps) => {
   const location = useLocation();
-  const authCheckAttempts = useRef(0);
-  const maxAuthCheckAttempts = 3;
-  const checkInProgress = useRef(false);
-  const isComponentMounted = useRef(true);
+  const {
+    isLoading,
+    isAuthenticated,
+    isAdmin,
+    isAccountOwner,
+    userEmail,
+    userRole
+  } = useAccessControl();
+  
+  const { hasAccess, isLoading: accessRightsLoading } = usePageAccess(
+    userEmail,
+    isAdmin,
+    isAccountOwner,
+    userRole
+  );
 
+  // Add a timeout to prevent infinite loading
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
   useEffect(() => {
-    isComponentMounted.current = true;
-    
-    // Avoid redundant checks
-    if (authCheckComplete.current || checkInProgress.current) {
-      return;
+    if (isLoading) {
+      // Set a timeout to force progress after 5 seconds
+      const timer = setTimeout(() => {
+        setLoadingTimeout(true);
+        console.log("Loading timeout triggered in ProtectedRoute - forcing navigation");
+        // Also log any cached auth data to help with debugging
+        if (sessionStorage.getItem('authState')) {
+          console.log("Found cached auth state:", sessionStorage.getItem('authState'));
+        }
+      }, 5000);
+      
+      return () => clearTimeout(timer);
     }
-    
-    // If we have a cached value, use it
-    const now = Date.now();
-    if (authCache.isAuthenticated !== null && now - authCache.timestamp < authCache.expirationTime) {
-      if (isComponentMounted.current) {
-        setIsAuthenticated(authCache.isAuthenticated);
-        setIsLoading(false);
-        authCheckComplete.current = true;
-      }
-      return;
-    }
-    
-    const checkAuth = async () => {
-      try {
-        console.info("ProtectedRoute: Checking authentication");
-        checkInProgress.current = true;
-        authCheckAttempts.current += 1;
-        
-        // Get current session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          // No session found
-          console.info("ProtectedRoute: No session found");
-          if (isComponentMounted.current) {
-            setIsAuthenticated(false);
-            setIsLoading(false);
-            authCheckComplete.current = true;
-            
-            // Update cache
-            authCache.isAuthenticated = false;
-            authCache.timestamp = Date.now();
-          }
-          checkInProgress.current = false;
-          return;
-        }
-        
-        // Session found, mark as authenticated immediately
-        if (isComponentMounted.current) {
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          authCheckComplete.current = true;
-          
-          // Update cache
-          authCache.isAuthenticated = true;
-          authCache.timestamp = Date.now();
-        }
-        
-        checkInProgress.current = false;
-      } catch (error) {
-        console.error("ProtectedRoute: Auth check error", error);
-        checkInProgress.current = false;
-        
-        // Attempt retry if under max attempts
-        if (authCheckAttempts.current < maxAuthCheckAttempts && isComponentMounted.current) {
-          console.info(`ProtectedRoute: Retrying auth check (${authCheckAttempts.current}/${maxAuthCheckAttempts})`);
-          setTimeout(checkAuth, 500);
-          return;
-        }
-        
-        if (isComponentMounted.current) {
-          setIsAuthenticated(false);
-          setIsLoading(false);
-          authCheckComplete.current = true;
-          
-          // Update cache
-          authCache.isAuthenticated = false;
-          authCache.timestamp = Date.now();
-          
-          toast.error("Erreur de connexion. Veuillez vous reconnecter.", {
-            id: "auth-error"
-          });
-        }
-      }
-    };
+  }, [isLoading]);
 
-    // Execute check with no delay
-    checkAuth();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.info("ProtectedRoute: Auth state change", event);
-        if (event === 'SIGNED_OUT') {
-          if (isComponentMounted.current) {
-            setIsAuthenticated(false);
-            setIsLoading(false);
-            
-            // Update cache
-            authCache.isAuthenticated = false;
-            authCache.timestamp = Date.now();
-          }
-        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (isComponentMounted.current) {
-            const isValid = !!session;
-            setIsAuthenticated(isValid);
-            setIsLoading(false);
-            
-            // Update cache with longer expiration for performance
-            authCache.isAuthenticated = isValid;
-            authCache.timestamp = Date.now();
-          }
-        }
-      }
-    );
-
-    return () => {
-      isComponentMounted.current = false;
-      if (authListener) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, []);
-
-  if (isLoading) {
+  // Handle loading state with timeout recovery
+  if (isLoading && !loadingTimeout) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#f5f2ee]">
-        <Spinner className="h-10 w-10 text-[#B88E23]" />
+      <div className="min-h-screen bg-gradient-to-b from-[#f5f2ee] to-white flex items-center justify-center p-4">
+        <div className="flex flex-col items-center justify-center">
+          <img 
+            src="/lovable-uploads/1cc80bed-52e4-4216-903b-1a8170e9886a.png" 
+            alt="DentalPilote Logo" 
+            className="h-24 w-auto mb-4"
+          />
+          <div className="h-10 w-10 border-4 border-[#B88E23] border-t-transparent rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    // Use a more direct approach for redirection to prevent React Router issues
-    if (window.location.pathname !== "/auth") {
-      window.location.href = "/auth";
-      return null;
+  // If loading takes too long, redirect to auth page with an explanation
+  if (loadingTimeout) {
+    console.log("Redirecting due to loading timeout");
+    // Attempt to use any cached authentication data before giving up
+    const cachedAuth = sessionStorage.getItem('cachedAuthState');
+    if (cachedAuth) {
+      try {
+        const parsedAuth = JSON.parse(cachedAuth);
+        if (parsedAuth.isAuthenticated) {
+          console.log("Using cached authentication data to proceed");
+          // Continue with the cached data
+          return <>{children}</>;
+        }
+      } catch (e) {
+        console.error("Error parsing cached auth data:", e);
+      }
     }
+    
+    toast.error("Session de connexion expirée", {
+      description: "Veuillez vous connecter à nouveau",
+      duration: 5000,
+    });
+    
+    return <Navigate to="/auth" state={{ from: location, timeout: true }} replace />;
+  }
+
+  // Handle authentication check
+  if (requiresAuth && !isAuthenticated) {
+    console.log("User not authenticated, redirecting to auth page");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>;
-};
+  // Handle admin check - except for the settings page which should be accessible to all users
+  if (requiresAdmin && !isAdmin && !isAccountOwner && location.pathname !== "/parametres") {
+    console.log(`Admin-only page access denied for user ${userEmail} with role ${userRole}`);
+    toast.error("Accès réservé aux administrateurs", {
+      id: "admin-only",
+    });
+    return <Navigate to="/" replace />;
+  }
 
-// Function to invalidate the auth cache
-export const invalidateAuthCache = () => {
-  authCache.isAuthenticated = null;
-  authCache.timestamp = 0;
-  console.info("ProtectedRoute: Auth cache invalidated");
+  // Redirect to the correct page based on user role
+  // Only apply this logic when accessing the root path "/"
+  if (isAuthenticated && location.pathname === "/") {
+    console.log(`Checking role-based redirect for user with role: ${userRole}, isAdmin: ${isAdmin}`);
+    
+    // Non-admin users (assistants and secretaries) are redirected to operations
+    if (!isAdmin && !isAccountOwner && (userRole === 'assistante' || userRole === 'secrétaire')) {
+      console.log(`Redirecting ${userRole} to operations page`);
+      return <Navigate to="/operations" replace />;
+    }
+    
+    // Admin users and dentists stay on the dashboard (default behavior)
+    console.log("User can access dashboard, no redirect needed");
+  }
+
+  // Check page-specific access rights - settings page is always accessible to authenticated users
+  if (pageId && location.pathname !== "/parametres") {
+    console.log(`Checking access for page ${pageId} for user ${userEmail} with role ${userRole}`);
+    
+    if (!hasAccess(pageId)) {
+      console.log(`Access denied for page ${pageId} for user ${userEmail} with role ${userRole}`);
+      toast.error("Vous n'avez pas accès à cette page", {
+        id: "no-access",
+      });
+      
+      // Redirect to appropriate page based on role
+      if (!isAdmin && !isAccountOwner && (userRole === 'assistante' || userRole === 'secrétaire')) {
+        return <Navigate to="/operations" replace />;
+      } else {
+        return <Navigate to="/" replace />;
+      }
+    }
+  }
+
+  // Cache successful authentication state for backup
+  if (isAuthenticated) {
+    try {
+      const cacheData = {
+        isAuthenticated,
+        isAdmin,
+        isAccountOwner,
+        userEmail,
+        userRole,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('cachedAuthState', JSON.stringify(cacheData));
+    } catch (e) {
+      console.error("Error caching auth state:", e);
+    }
+  }
+
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;
