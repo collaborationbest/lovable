@@ -6,8 +6,9 @@ function loadGoogleMapsApi() {
     return;
   }
   
-  // Try to get the API key from environment variables
-  const apiKey = window.ENV_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || 'your-google-maps-api-key';
+  // Get API key from window.ENV_GOOGLE_MAPS_API_KEY or use a default
+  // Note: Removed process.env reference which doesn't work in browser context
+  const apiKey = window.ENV_GOOGLE_MAPS_API_KEY || 'your-google-maps-api-key';
   
   const script = document.createElement('script');
   script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap&libraries=marker&v=beta`;
