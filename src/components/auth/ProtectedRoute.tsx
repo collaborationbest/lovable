@@ -5,29 +5,62 @@ import { supabase } from "@/integrations/supabase/client";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 
+// Simple auth state cache for ProtectedRoute
+const authCache = {
+  isAuthenticated: null as boolean | null,
+  timestamp: 0,
+  // Cache expiration in milliseconds (5 minutes)
+  expirationTime: 5 * 60 * 1000
+};
+
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(
+    // Initialize from cache if available and not expired
+    () => {
+      const now = Date.now();
+      if (authCache.isAuthenticated !== null && now - authCache.timestamp < authCache.expirationTime) {
+        console.info("ProtectedRoute: Using cached auth state", authCache.isAuthenticated);
+        return authCache.isAuthenticated;
+      }
+      return null;
+    }
+  );
+  
   const authCheckComplete = useRef(false);
   const location = useLocation();
   const authCheckAttempts = useRef(0);
   const maxAuthCheckAttempts = 3;
+  const checkInProgress = useRef(false);
+  const isComponentMounted = useRef(true);
 
   useEffect(() => {
-    let isMounted = true;
+    isComponentMounted.current = true;
     
-    // Avoid multiple checks
-    if (authCheckComplete.current) {
+    // Avoid redundant checks
+    if (authCheckComplete.current || checkInProgress.current) {
+      return;
+    }
+    
+    // If we have a cached value, use it
+    const now = Date.now();
+    if (authCache.isAuthenticated !== null && now - authCache.timestamp < authCache.expirationTime) {
+      if (isComponentMounted.current) {
+        setIsAuthenticated(authCache.isAuthenticated);
+        setIsLoading(false);
+        authCheckComplete.current = true;
+      }
       return;
     }
     
     const checkAuth = async () => {
       try {
         console.info("ProtectedRoute: Checking authentication");
+        checkInProgress.current = true;
         authCheckAttempts.current += 1;
         
         // Get current session
@@ -36,46 +69,50 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         if (!session) {
           // No session found
           console.info("ProtectedRoute: No session found");
-          if (isMounted) {
+          if (isComponentMounted.current) {
             setIsAuthenticated(false);
             setIsLoading(false);
             authCheckComplete.current = true;
+            
+            // Update cache
+            authCache.isAuthenticated = false;
+            authCache.timestamp = Date.now();
           }
+          checkInProgress.current = false;
           return;
         }
         
-        // Verify session is still valid
-        const { data: user, error } = await supabase.auth.getUser();
-        
-        if (error || !user.user) {
-          console.info("ProtectedRoute: Session invalid or error", error);
-          if (isMounted) {
-            setIsAuthenticated(false);
-            setIsLoading(false);
-            authCheckComplete.current = true;
-          }
-        } else {
-          console.info("ProtectedRoute: User authenticated", user.user.email);
-          if (isMounted) {
-            setIsAuthenticated(true);
-            setIsLoading(false);
-            authCheckComplete.current = true;
-          }
+        // Session found, mark as authenticated immediately
+        if (isComponentMounted.current) {
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          authCheckComplete.current = true;
+          
+          // Update cache
+          authCache.isAuthenticated = true;
+          authCache.timestamp = Date.now();
         }
+        
+        checkInProgress.current = false;
       } catch (error) {
         console.error("ProtectedRoute: Auth check error", error);
+        checkInProgress.current = false;
         
         // Attempt retry if under max attempts
-        if (authCheckAttempts.current < maxAuthCheckAttempts) {
+        if (authCheckAttempts.current < maxAuthCheckAttempts && isComponentMounted.current) {
           console.info(`ProtectedRoute: Retrying auth check (${authCheckAttempts.current}/${maxAuthCheckAttempts})`);
           setTimeout(checkAuth, 500);
           return;
         }
         
-        if (isMounted) {
+        if (isComponentMounted.current) {
           setIsAuthenticated(false);
           setIsLoading(false);
           authCheckComplete.current = true;
+          
+          // Update cache
+          authCache.isAuthenticated = false;
+          authCache.timestamp = Date.now();
           
           toast.error("Erreur de connexion. Veuillez vous reconnecter.", {
             id: "auth-error"
@@ -84,30 +121,40 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       }
     };
 
-    // Execute check with minimal delay
-    const timer = setTimeout(checkAuth, 50);
+    // Execute check with no delay
+    checkAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.info("ProtectedRoute: Auth state change", event);
         if (event === 'SIGNED_OUT') {
-          if (isMounted) {
+          if (isComponentMounted.current) {
             setIsAuthenticated(false);
             setIsLoading(false);
+            
+            // Update cache
+            authCache.isAuthenticated = false;
+            authCache.timestamp = Date.now();
           }
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (isMounted) {
-            setIsAuthenticated(!!session);
+          if (isComponentMounted.current) {
+            const isValid = !!session;
+            setIsAuthenticated(isValid);
             setIsLoading(false);
+            
+            // Update cache with longer expiration for performance
+            authCache.isAuthenticated = isValid;
+            authCache.timestamp = Date.now();
           }
         }
       }
     );
 
     return () => {
-      isMounted = false;
-      clearTimeout(timer);
-      authListener?.subscription.unsubscribe();
+      isComponentMounted.current = false;
+      if (authListener) {
+        authListener.subscription.unsubscribe();
+      }
     };
   }, []);
 
@@ -120,11 +167,22 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!isAuthenticated) {
-    // Redirection vers la page d'authentification en conservant l'URL initiale
+    // Use a more direct approach for redirection to prevent React Router issues
+    if (window.location.pathname !== "/auth") {
+      window.location.href = "/auth";
+      return null;
+    }
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;
+};
+
+// Function to invalidate the auth cache
+export const invalidateAuthCache = () => {
+  authCache.isAuthenticated = null;
+  authCache.timestamp = 0;
+  console.info("ProtectedRoute: Auth cache invalidated");
 };
 
 export default ProtectedRoute;

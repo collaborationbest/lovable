@@ -1,12 +1,10 @@
 import { TeamMember } from "@/types/TeamMember";
 import { ACCOUNT_OWNER_EMAIL } from "@/hooks/useAccessControl";
+import { useMemo } from "react";
 
-// Function to remove duplicate team members
-export const removeDuplicateTeamMembers = (members: TeamMember[]): TeamMember[] => {
-  console.log("Removing duplicates from team members, initial count:", members.length);
-  
-  // Use a Map to track unique members by email (case-insensitive)
-  const uniqueByEmail = new Map<string, TeamMember>();
+// Create memoized map for quicker lookups
+const createEmailMemberMap = (members: TeamMember[]): Map<string, TeamMember> => {
+  const emailMap = new Map<string, TeamMember>();
   
   // First pass: prioritize database members (with real IDs)
   members.forEach(member => {
@@ -14,24 +12,36 @@ export const removeDuplicateTeamMembers = (members: TeamMember[]): TeamMember[] 
       const email = member.contact.toLowerCase();
       
       // If we don't have this email yet, or current one has a less valid ID, add it
-      if (!uniqueByEmail.has(email) || 
-          uniqueByEmail.get(email)?.id === "owner" || 
-          (member.id !== "owner" && !uniqueByEmail.get(email)?.id)) {
-        uniqueByEmail.set(email, member);
-      } else if (member.id !== "owner" && uniqueByEmail.get(email)?.id !== "owner") {
+      if (!emailMap.has(email) || 
+          emailMap.get(email)?.id === "owner" || 
+          (member.id !== "owner" && !emailMap.get(email)?.id)) {
+        emailMap.set(email, member);
+      } else if (member.id !== "owner" && emailMap.get(email)?.id !== "owner") {
         // If both have valid IDs, keep the newer one (assuming higher ID is newer)
-        const existingId = uniqueByEmail.get(email)?.id || "0";
+        const existingId = emailMap.get(email)?.id || "0";
         const currentId = member.id || "0";
         
         if (currentId > existingId) {
-          uniqueByEmail.set(email, member);
+          emailMap.set(email, member);
         }
       }
     } else if (member.id && !member.contact) {
       // Handle members without email but with ID (edge case)
-      uniqueByEmail.set(`id_${member.id}`, member);
+      emailMap.set(`id_${member.id}`, member);
     }
   });
+  
+  return emailMap;
+};
+
+// Function to remove duplicate team members
+export const removeDuplicateTeamMembers = (members: TeamMember[]): TeamMember[] => {
+  if (!members || members.length === 0) return [];
+  
+  console.log("Removing duplicates from team members, initial count:", members.length);
+  
+  // Create email-to-member map
+  const uniqueByEmail = createEmailMemberMap(members);
   
   // Second pass: ensure we have the account owner
   const ownerEmail = ACCOUNT_OWNER_EMAIL.toLowerCase();
@@ -51,4 +61,9 @@ export const removeDuplicateTeamMembers = (members: TeamMember[]): TeamMember[] 
   const result = Array.from(uniqueByEmail.values());
   console.log("After email-based deduplication:", result.length);
   return result;
+};
+
+// Hook for memoized team member deduplication
+export const useDedupedTeamMembers = (members: TeamMember[]): TeamMember[] => {
+  return useMemo(() => removeDuplicateTeamMembers(members), [members]);
 };

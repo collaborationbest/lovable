@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/parametres/Header";
 import ProfileSection from "@/components/parametres/ProfileSection";
 import AccessRightsSection from "@/components/parametres/AccessRightsSection";
+import PasswordSection from "@/components/parametres/PasswordSection";
 
 const Parametres = () => {
   const { user, firstName, lastName, isAdmin, loading, setLoading, updateUserName } = useUserData();
@@ -28,6 +29,7 @@ const Parametres = () => {
           <Tabs defaultValue="profile" className="max-w-3xl">
             <TabsList className="mb-6">
               <TabsTrigger value="profile">Profil</TabsTrigger>
+              <TabsTrigger value="password">Mot de passe</TabsTrigger>
               {isAdmin && <TabsTrigger value="access-rights">Gestion des droits</TabsTrigger>}
             </TabsList>
             
@@ -39,6 +41,13 @@ const Parametres = () => {
                 loading={loading}
                 setLoading={setLoading}
                 onProfileUpdated={updateUserName}
+              />
+            </TabsContent>
+            
+            <TabsContent value="password" className="space-y-6">
+              <PasswordSection
+                loading={loading}
+                setLoading={setLoading}
               />
             </TabsContent>
             

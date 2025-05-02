@@ -41,13 +41,13 @@ const ExportSection = ({ user }: ExportSectionProps) => {
       };
       
       await exportToJSON(exportData, 'cabinet-dental-data');
-      toast({
+      toast.default({
         title: "Exportation réussie",
         description: "Les données ont été exportées au format JSON avec succès.",
       });
     } catch (error) {
       console.error("Erreur lors de l'exportation JSON:", error);
-      toast({
+      toast.default({
         title: "Erreur d'exportation",
         description: "Une erreur est survenue lors de l'exportation des données.",
         variant: "destructive",
@@ -84,13 +84,13 @@ const ExportSection = ({ user }: ExportSectionProps) => {
       };
       
       await exportToPDF(exportData, 'cabinet-dental-rapport');
-      toast({
+      toast.default({
         title: "Exportation réussie",
         description: "Les données ont été exportées au format PDF avec succès.",
       });
     } catch (error) {
       console.error("Erreur lors de l'exportation PDF:", error);
-      toast({
+      toast.default({
         title: "Erreur d'exportation",
         description: "Une erreur est survenue lors de l'exportation des données.",
         variant: "destructive",

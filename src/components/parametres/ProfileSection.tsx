@@ -37,9 +37,10 @@ const ProfileSection = ({
   const { 
     deleteConfirmation, 
     isDeleteButtonDisabled, 
+    isDeleting,
     handleDeleteConfirmationChange, 
     handleDeleteAccount 
-  } = useAccountDeletion({ userId, setLoading });
+  } = useAccountDeletion();
   
   useEffect(() => {
     setFirstName(initialFirstName);

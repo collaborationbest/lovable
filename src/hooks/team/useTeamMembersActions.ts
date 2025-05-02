@@ -1,5 +1,7 @@
+
 import { TeamMember, DentalSpecialty } from "@/types/TeamMember";
 import { useToast } from "@/hooks/use-toast";
+import { useCallback } from "react";
 import { 
   addTeamMember, 
   deleteTeamMember, 
@@ -36,7 +38,7 @@ export function useTeamMembersActions({
   const { toast } = useToast();
   
   // Function to add a new team member
-  const handleAddMember = async () => {
+  const handleAddMember = useCallback(async () => {
     if (!newMember.firstName || !newMember.lastName || !newMember.contact) {
       toast({
         title: "Champs requis",
@@ -81,16 +83,16 @@ export function useTeamMembersActions({
         variant: "destructive"
       });
     }
-  };
+  }, [newMember, teamMembers, setTeamMembers, setNewMember, setIsAddMemberOpen, toast]);
   
   // Function to open member details
-  const handleViewMember = (member: TeamMember) => {
+  const handleViewMember = useCallback((member: TeamMember) => {
     setSelectedMember(member);
     setIsViewMemberOpen(true);
-  };
+  }, [setSelectedMember, setIsViewMemberOpen]);
   
   // Function to delete a team member
-  const handleDeleteMember = async (id: string) => {
+  const handleDeleteMember = useCallback(async (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce membre de l'équipe ?")) {
       try {
         const { error } = await deleteTeamMember(id);
@@ -119,16 +121,14 @@ export function useTeamMembersActions({
         });
       }
     }
-  };
+  }, [teamMembers, selectedMember, setTeamMembers, setIsViewMemberOpen, toast]);
   
   // Function to upload a contract
-  const handleUploadContract = async () => {
+  const handleUploadContract = useCallback(async (filePath: string, fileName: string) => {
     if (!selectedMember) return;
     
     try {
-      // In a real implementation, upload to Supabase Storage
-      // For now, simulate contract upload
-      const { error } = await uploadContract(selectedMember.id, 'contrat_embauche.pdf');
+      const { error } = await uploadContract(selectedMember.id, filePath, fileName);
       
       if (error) {
         throw error;
@@ -137,27 +137,26 @@ export function useTeamMembersActions({
       // Update local state
       const updatedMembers = teamMembers.map(member => 
         member.id === selectedMember.id 
-          ? { ...member, contractFile: "contrat_embauche.pdf" } 
+          ? { ...member, contractFile: fileName } 
           : member
       );
       
       setTeamMembers(updatedMembers);
-      setSelectedMember({ ...selectedMember, contractFile: "contrat_embauche.pdf" });
-      setIsUploadContractOpen(false);
+      setSelectedMember({ ...selectedMember, contractFile: fileName });
       
       toast({
         title: "Contrat téléchargé",
         description: "Le contrat a été téléchargé avec succès."
       });
     } catch (error: any) {
-      console.error("Error uploading contract:", error);
+      console.error("Error saving contract reference:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors du téléchargement du contrat.",
+        description: error.message || "Une erreur est survenue lors de l'enregistrement de la référence du contrat.",
         variant: "destructive"
       });
     }
-  };
+  }, [selectedMember, teamMembers, setTeamMembers, setSelectedMember, toast]);
 
   return {
     handleAddMember,

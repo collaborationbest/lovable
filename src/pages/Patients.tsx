@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, FileUp, CircleCheck, PackageX } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import PatientsList from "@/components/patients/PatientsList";
 import PatientImportDialog from "@/components/patients/PatientImportDialog";
 import PatientImportPreview from "@/components/patients/PatientImportPreview";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner";
 
 interface PatientData {
   id: string;
@@ -37,7 +37,6 @@ const Patients = () => {
   const [importNotificationVisible, setImportNotificationVisible] = useState(false);
   const [importStatus, setImportStatus] = useState<'pending' | 'success' | 'error'>('pending');
   const [importProgress, setImportProgress] = useState(0);
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchPatients();
@@ -56,11 +55,7 @@ const Patients = () => {
       setPatients(data || []);
     } catch (error) {
       console.error("Erreur lors de la récupération des patients:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de récupérer la liste des patients.",
-        variant: "destructive",
-      });
+      toast.error("Impossible de récupérer la liste des patients.");
     } finally {
       setIsLoading(false);
     }
@@ -74,21 +69,13 @@ const Patients = () => {
 
   const handleFileUpload = async () => {
     if (!selectedFile) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un fichier à importer.",
-        variant: "destructive",
-      });
+      toast.error("Veuillez sélectionner un fichier à importer.");
       return;
     }
 
     const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
     if (fileExtension !== 'csv' && fileExtension !== 'xlsx') {
-      toast({
-        title: "Format non supporté",
-        description: "Veuillez importer un fichier CSV ou XLSX.",
-        variant: "destructive",
-      });
+      toast.error("Veuillez importer un fichier CSV ou XLSX.");
       return;
     }
 
@@ -107,11 +94,7 @@ const Patients = () => {
       setShowPreview(true);
     } catch (error) {
       console.error("Erreur lors de la prévisualisation du fichier:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de lire le fichier. Vérifiez le format du fichier.",
-        variant: "destructive",
-      });
+      toast.error("Impossible de lire le fichier. Vérifiez le format du fichier.");
     } finally {
       setImportInProgress(false);
     }
@@ -124,9 +107,8 @@ const Patients = () => {
     setImportStatus('pending');
     setImportProgress(0);
     
-    toast({
-      title: "Importation en cours",
-      description: "L'importation des patients a commencé. Vous serez notifié une fois terminée.",
+    toast("Importation en cours", {
+      description: "L'importation des patients a commencé. Vous serez notifié une fois terminée."
     });
     
     setImportInProgress(true);
@@ -152,10 +134,7 @@ const Patients = () => {
       setImportProgress(100);
       setImportStatus('success');
       
-      toast({
-        title: "Importation réussie",
-        description: `${response.data.count} patients ont été importés avec succès.`,
-      });
+      toast.success(`${response.data.count} patients ont été importés avec succès.`);
       
       setFileImportOpen(false);
       setShowPreview(false);
@@ -169,11 +148,7 @@ const Patients = () => {
       console.error("Erreur lors de l'importation:", error);
       setImportStatus('error');
       
-      toast({
-        title: "Erreur d'importation",
-        description: "Une erreur est survenue lors de l'importation des patients.",
-        variant: "destructive",
-      });
+      toast.error("Une erreur est survenue lors de l'importation des patients.");
       
       setTimeout(() => {
         setImportNotificationVisible(false);

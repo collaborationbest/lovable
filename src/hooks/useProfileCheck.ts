@@ -70,26 +70,38 @@ export const useProfileCheck = ({ doctors }: UseProfileCheckProps): UseProfileCh
           
           if (error) {
             console.error("Error checking for cabinet:", error);
-            // If there's an error querying the database, don't show the profile
-            setShowCabinetProfile(false);
-          } else if (cabinetData) {
+          }
+          
+          // Alternative check for team membership in case owner_id isn't set
+          const { data: teamMemberData, error: teamError } = await supabase
+            .from('team_members')
+            .select('cabinet_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+            
+          if (teamError) {
+            console.error("Error checking team membership:", teamError);
+          }
+          
+          // If either cabinet exists or user is a team member
+          if ((cabinetData && cabinetData.id) || (teamMemberData && teamMemberData.cabinet_id)) {
             // Cabinet exists, mark as configured and don't show dialog
             localStorage.setItem('profileConfigured', 'true');
             setShowCabinetProfile(false);
             console.log('Cabinet found in database, marking profile as configured');
           } else {
-            // For first-time users: Check if this is their first login
-            const { data: teamMemberData, error: teamError } = await supabase
+            // For first-time users: Check if this is their first login by looking for any team_member entry
+            const { data: anyTeamMemberData, error: anyTeamError } = await supabase
               .from('team_members')
               .select('*')
               .eq('contact', session.user.email)
               .maybeSingle();
               
-            if (teamError) {
-              console.error("Error checking team membership:", teamError);
+            if (anyTeamError) {
+              console.error("Error checking team membership by email:", anyTeamError);
             }
             
-            if (!teamMemberData) {
+            if (!anyTeamMemberData) {
               // No cabinet and not a team member - this is a new user who needs to create a cabinet
               console.log('New user detected, must create a cabinet');
               setShowCabinetProfile(true);
@@ -102,8 +114,8 @@ export const useProfileCheck = ({ doctors }: UseProfileCheckProps): UseProfileCh
           }
         } catch (dbError) {
           console.error("Database error when checking cabinet:", dbError);
-          // If there's an exception querying the database, don't show the profile
-          setShowCabinetProfile(false);
+          // If there's an exception querying the database, show the profile to ensure user can create a cabinet
+          setShowCabinetProfile(true);
         }
         
         profileCheckComplete.current = true;
@@ -112,8 +124,8 @@ export const useProfileCheck = ({ doctors }: UseProfileCheckProps): UseProfileCh
         console.error("Error checking profile:", error);
         profileCheckComplete.current = true;
         setIsLoading(false);
-        // Default to not showing the profile on error to prevent blocking the app
-        setShowCabinetProfile(false);
+        // Default to showing the profile on error to let the user set up their cabinet
+        setShowCabinetProfile(true);
       }
     };
     

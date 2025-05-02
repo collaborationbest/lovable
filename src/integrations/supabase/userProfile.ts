@@ -1,3 +1,4 @@
+
 import { supabase } from './client';
 
 interface UserProfile {
@@ -120,12 +121,18 @@ export const ensureUserProfile = async (
     const timestamp = new Date().toISOString();
     
     if (existingProfile) {
-      // Update existing profile
+      // Update existing profile with email
       const updateData = {
         ...profileData,
         email: profileData.email || existingProfile.email, // Ensure email is included
         updated_at: timestamp
       };
+      
+      // Make sure email is always present (required by the database)
+      if (!updateData.email) {
+        const { data } = await supabase.auth.getUser(userId);
+        updateData.email = data?.user?.email || '';
+      }
       
       const { error } = await supabase
         .from('user_profiles')

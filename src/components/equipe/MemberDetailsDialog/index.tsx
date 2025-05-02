@@ -13,7 +13,7 @@ interface MemberDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   member: TeamMember | null;
   onDelete: (id: string) => void;
-  onUploadContract: () => void;
+  onUploadContract: (filePath: string, fileName: string) => void;
   onOpenUploadDialog: () => void;
   onToggleAdmin?: (id: string, isAdmin: boolean) => void;
   onUpdateSpecialty?: (id: string, specialty: DentalSpecialty) => void;

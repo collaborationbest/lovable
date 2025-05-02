@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { getUserCabinetId } from "@/integrations/supabase/cabinetUtils";
 import { Contact, ContactFormData } from "./types";
 
@@ -20,7 +20,6 @@ export const useContacts = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [cabinetId, setCabinetId] = useState<string | null>(null);
-  const { toast } = useToast();
 
   // Fetch current cabinet ID
   useEffect(() => {
@@ -60,11 +59,7 @@ export const useContacts = () => {
       setContacts(formattedContacts);
     } catch (error) {
       console.error("Error fetching contacts:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les contacts.",
-        variant: "destructive"
-      });
+      toast.error("Impossible de charger les contacts.");
     } finally {
       setIsLoading(false);
     }
@@ -89,11 +84,7 @@ export const useContacts = () => {
 
   const handleAddContact = async () => {
     if (!cabinetId) {
-      toast({
-        title: "Erreur",
-        description: "Aucun cabinet sélectionné.",
-        variant: "destructive"
-      });
+      toast.error("Aucun cabinet sélectionné.");
       return;
     }
     
@@ -139,17 +130,10 @@ export const useContacts = () => {
       
       setIsDialogOpen(false);
       
-      toast({
-        title: "Contact ajouté",
-        description: "Le contact a été ajouté avec succès."
-      });
+      toast.success("Le contact a été ajouté avec succès.");
     } catch (error) {
       console.error("Error adding contact:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ajouter le contact.",
-        variant: "destructive"
-      });
+      toast.error("Impossible d'ajouter le contact.");
     }
   };
 
@@ -182,17 +166,10 @@ export const useContacts = () => {
       setEditingContact(null);
       setIsDialogOpen(false);
       
-      toast({
-        title: "Contact modifié",
-        description: "Le contact a été modifié avec succès."
-      });
+      toast.success("Le contact a été modifié avec succès.");
     } catch (error) {
       console.error("Error updating contact:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de modifier le contact.",
-        variant: "destructive"
-      });
+      toast.error("Impossible de modifier le contact.");
     }
   };
 
@@ -210,17 +187,10 @@ export const useContacts = () => {
       const updatedContacts = contacts.filter(contact => contact.id !== id);
       setContacts(updatedContacts);
       
-      toast({
-        title: "Contact supprimé",
-        description: "Le contact a été supprimé avec succès."
-      });
+      toast.success("Le contact a été supprimé avec succès.");
     } catch (error) {
       console.error("Error deleting contact:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le contact.",
-        variant: "destructive"
-      });
+      toast.error("Impossible de supprimer le contact.");
     }
   };
 
