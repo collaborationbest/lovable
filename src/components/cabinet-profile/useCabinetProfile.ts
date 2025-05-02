@@ -3,6 +3,7 @@ import { Doctor } from "@/types/Doctor";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from "uuid";
 
 export const useCabinetProfile = (
   initialDoctors: Doctor[],
@@ -267,8 +268,8 @@ export const useCabinetProfile = (
           cabinetId = existingCabinet.id;
           console.log(`Cabinet updated with ID: ${cabinetId}`);
         } else {
-          // Créer un nouveau cabinet
-          const newCabinetId = `cab_${Date.now().toString(36)}`;
+          // Créer un nouveau cabinet using a proper UUID
+          const newCabinetId = uuidv4();
           
           const { error: insertError } = await supabase
             .from('cabinets')
