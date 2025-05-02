@@ -34,7 +34,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
   // Format the doctor's title properly
   const formattedTitle = doctor.title === "dr" ? "Dr" : "Pr";
   
-  // Version en mode édition avec champs séparés pour titre, nom et prénom
+  // Version en mode édition avec champ unique pour le nom complet
   const renderEditMode = () => (
     <div className="space-y-3 p-4 border rounded-lg border-[#B88E23]/20 bg-[#F1F0FB]/50 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-center border-b border-[#B88E23]/10 pb-2">
@@ -58,7 +58,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
         )}
       </div>
 
-      {/* Formulaire avec champs séparés */}
+      {/* Formulaire avec champ unique pour le nom complet */}
       <div className="grid gap-3">
         <div>
           <Label className="block text-sm text-[#454240] mb-1">
@@ -80,25 +80,32 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
 
         <div>
           <Label className="block text-sm text-[#454240] mb-1">
-            Nom
+            Nom complet
           </Label>
           <Input
-            value={doctor.lastName}
-            onChange={(e) => onUpdate(doctor.id, "lastName", e.target.value)}
+            value={`${doctor.firstName} ${doctor.lastName}`.trim()}
+            onChange={(e) => {
+              const fullName = e.target.value;
+              const nameParts = fullName.split(' ');
+              
+              if (nameParts.length > 1) {
+                // Last name is everything after the first name
+                const firstName = nameParts[0];
+                const lastName = nameParts.slice(1).join(' ');
+                
+                // Update first name
+                onUpdate(doctor.id, "firstName", firstName);
+                
+                // Update last name
+                onUpdate(doctor.id, "lastName", lastName);
+              } else {
+                // If there's only one word, treat it as the first name
+                onUpdate(doctor.id, "firstName", fullName);
+                onUpdate(doctor.id, "lastName", "");
+              }
+            }}
             className="border-[#B88E23]/20 bg-white"
-            placeholder="Nom"
-          />
-        </div>
-
-        <div>
-          <Label className="block text-sm text-[#454240] mb-1">
-            Prénom
-          </Label>
-          <Input
-            value={doctor.firstName}
-            onChange={(e) => onUpdate(doctor.id, "firstName", e.target.value)}
-            className="border-[#B88E23]/20 bg-white"
-            placeholder="Prénom"
+            placeholder="Prénom Nom"
           />
         </div>
       </div>
