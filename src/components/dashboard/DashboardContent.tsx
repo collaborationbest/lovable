@@ -6,6 +6,8 @@
 import ProgressBar from "@/components/dashboard/ProgressBar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ChecklistContainer from "@/components/checklist/ChecklistContainer";
+import TodayTasks from "@/components/dashboard/TodayTasks";
+import TodayEvents from "@/components/dashboard/TodayEvents";
 import { Doctor } from "@/types/Doctor";
 import { ChecklistItem } from "@/types/ChecklistItem";
 
@@ -69,6 +71,15 @@ const DashboardContent = ({
 
   // Déterminer si le cabinet est en cours de création
   const isCreationInProgress = cabinetStatus === "en création";
+  
+  // Formater la date du jour
+  const today = new Date();
+  const formattedDate = today.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 
   return (
     <div className="pt-4 px-6 max-w-4xl mx-auto animate-slideIn">
@@ -100,12 +111,22 @@ const DashboardContent = ({
         </div>
       )}
 
-      {/* Message spécifique pour les cabinets en activité */}
+      {/* Contenu pour les cabinets en activité */}
       {!isCreationInProgress && (
-        <div className="mt-6 p-6 bg-white rounded-lg shadow-sm border border-[#B88E23]/10">
-          <p className="text-center text-[#5C4E3D]">
-            Bienvenue à votre tableau de bord de cabinet en activité.
-          </p>
+        <div className="mt-6 space-y-6">
+          {/* Date du jour */}
+          <div className="p-6 bg-white rounded-lg shadow-sm border border-[#B88E23]/10">
+            <h2 className="text-xl font-semibold text-[#5C4E3D] capitalize mb-1">{formattedDate}</h2>
+            <p className="text-[#5C4E3D]/70">
+              Bienvenue à votre tableau de bord quotidien
+            </p>
+          </div>
+          
+          {/* Grille pour les tâches et événements */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <TodayTasks />
+            <TodayEvents />
+          </div>
         </div>
       )}
     </div>

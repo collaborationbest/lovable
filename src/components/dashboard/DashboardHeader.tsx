@@ -1,10 +1,9 @@
 
-/**
- * DashboardHeader - Affiche l'en-tête du tableau de bord avec les informations du cabinet
- * et un bouton permettant d'accéder au profil du cabinet.
- */
 import { Button } from "@/components/ui/button";
-import { Building, Download } from "lucide-react";
+import { Building, Download, LayoutDashboard } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useState, useEffect } from "react";
 
 interface TimeLeft {
   days: number;
@@ -32,15 +31,65 @@ const DashboardHeader = ({
   onExportJSON,
   onExportPDF
 }: DashboardHeaderProps) => {
+  const isMobile = useIsMobile();
+  const {
+    profile,
+    loading: profileLoading
+  } = useUserProfile();
+  const [displayName, setDisplayName] = useState("");
+
+  // Set display name from profile
+  useEffect(() => {
+    if (profileLoading) return;
+    if (profile) {
+      const firstName = profile.first_name || "";
+      const lastName = profile.last_name || "";
+      if (firstName || lastName) {
+        setDisplayName(`${firstName} ${lastName}`.trim());
+        return;
+      }
+      if (profile.email) {
+        const emailName = profile.email.split('@')[0] || "";
+        setDisplayName(emailName);
+        return;
+      }
+    }
+    setDisplayName("Bienvenue");
+  }, [profile, profileLoading]);
+
   return (
     <div className="mb-6 relative">
-      {/* Bouton d'accès au profil positionné en haut à droite de façon absolue */}
-      <div className="absolute top-0 right-0">
+      {/* Export buttons positioned in top right absolutely */}
+      <div className="absolute top-0 right-0 space-x-2 flex">
+        {onExportJSON && (
+          <Button 
+            variant="outline" 
+            onClick={onExportJSON} 
+            className="text-[#5C4E3D] border-[#B88E23]/20 hover:bg-[#B88E23]/10 hover:text-[#B88E23]" 
+            size="sm"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            JSON
+          </Button>
+        )}
+        
+        {onExportPDF && (
+          <Button 
+            variant="outline" 
+            onClick={onExportPDF} 
+            className="text-[#5C4E3D] border-[#B88E23]/20 hover:bg-[#B88E23]/10 hover:text-[#B88E23]" 
+            size="sm"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            PDF
+          </Button>
+        )}
+        
         {showProfileButton && (
-          <Button
-            variant="outline"
-            onClick={onProfileClick}
-            className="text-[#5C4E3D] border-[#B88E23]/20 hover:bg-[#B88E23]/10 hover:text-[#B88E23]"
+          <Button 
+            variant="outline" 
+            onClick={onProfileClick} 
+            className="text-[#5C4E3D] border-[#B88E23]/20 hover:bg-[#B88E23]/10 hover:text-[#B88E23]" 
             size="sm"
           >
             <Building className="mr-2 h-4 w-4" />
@@ -49,23 +98,27 @@ const DashboardHeader = ({
         )}
       </div>
       
-      <div className="flex flex-col mb-4 pr-36">
-        {/* Titre du cabinet aligné à gauche avec taille réduite pour éviter les retours à la ligne */}
-        <h1 className="text-2xl md:text-3xl font-bold text-[#5C4E3D] text-left truncate">
-          {title || "Bienvenue dans Open Ordo"}
-        </h1>
-        
-        {/* Informations du cabinet alignées à gauche */}
-        {city && (
-          <div className="text-sm text-[#454240] mt-2 text-left">
-            <span>{city}</span>
-            {openingDate && timeLeft && (
-              <span className="ml-2">
-                • Ouverture prévue dans {timeLeft.months} mois et {timeLeft.days} jours
-              </span>
-            )}
-          </div>
-        )}
+      <div className="flex items-center gap-4 mb-4">
+        <div className="h-10 w-10 rounded-full bg-[#f5f2ee] flex items-center justify-center text-[#B88E23]">
+          <LayoutDashboard size={20} />
+        </div>
+        <div className={`${isMobile ? 'pt-10' : 'pr-36'}`}>
+          <h1 className="text-2xl font-semibold text-[#5C4E3D]">
+            {title || "Bienvenue dans Open Ordo"}
+          </h1>
+          
+          {/* Cabinet information */}
+          {city && (
+            <div className="text-sm text-[#454240]">
+              <span>{city}</span>
+              {openingDate && timeLeft && (
+                <span className="ml-2">
+                  • Ouverture prévue dans {timeLeft.months} mois et {timeLeft.days} jours
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

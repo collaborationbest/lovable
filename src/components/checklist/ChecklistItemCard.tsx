@@ -65,7 +65,7 @@ const ChecklistItemCard: React.FC<ChecklistItemCardProps> = ({
             >
               {item.title}
             </h3>
-            <p className="text-sm text-[#454240]/80 mt-1">
+            <p className="text-sm text-[#454240]/80 mt-1 text-left">
               {item.description}
             </p>
           </div>
