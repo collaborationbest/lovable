@@ -43,9 +43,20 @@ const LoginForm: React.FC<LoginFormProps> = ({ confirmationSuccess, authError })
 
   return (
     <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
-      <h1 className="text-2xl font-semibold text-[#5C4E3D] mb-6 text-center">
-        Bienvenue sur DentalPilote
+      <div className="flex justify-center mb-4">
+        <img 
+          src="/lovable-uploads/1cc80bed-52e4-4216-903b-1a8170e9886a.png" 
+          alt="DentalPilote Logo" 
+          className="h-16 w-auto"
+        />
+      </div>
+      
+      <h1 className="text-2xl font-semibold text-[#5C4E3D] mb-2 text-center">
+        Cabinet Connect
       </h1>
+      <p className="text-center text-gray-600 mb-6">
+        Connectez-vous à votre compte pour accéder à votre tableau de bord
+      </p>
       
       {confirmationSuccess && (
         <Alert className="mb-4 bg-green-50 border-green-500">
