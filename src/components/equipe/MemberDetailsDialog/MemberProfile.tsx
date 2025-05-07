@@ -1,12 +1,14 @@
-
-import React, { useState } from "react";
-import { TeamMember, DentalSpecialty } from "@/types/TeamMember";
-import { Button } from "@/components/ui/button";
-import { Activity, Pencil } from "lucide-react";
+import React from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Calendar, Mail, Phone, MapPin, FileText, Clock, Building, Star } from "lucide-react";
+import { TeamMember, DentalSpecialty } from "@/types/TeamMember";
+import { calculateTimeWithCompany } from "@/utils/dateUtils";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface MemberProfileProps {
   member: TeamMember;
@@ -14,6 +16,7 @@ interface MemberProfileProps {
   canModifyAdminRights: boolean;
   onToggleAdmin?: (id: string, isAdmin: boolean) => void;
   onUpdateSpecialty?: (id: string, specialty: DentalSpecialty) => void;
+  onOpenScheduleDialog?: () => void;
 }
 
 const MemberProfile: React.FC<MemberProfileProps> = ({
@@ -21,125 +24,159 @@ const MemberProfile: React.FC<MemberProfileProps> = ({
   isViewingOwner,
   canModifyAdminRights,
   onToggleAdmin,
-  onUpdateSpecialty
+  onUpdateSpecialty,
+  onOpenScheduleDialog
 }) => {
-  const [editingSpecialty, setEditingSpecialty] = useState(false);
-  
-  const handleSpecialtyChange = (value: string) => {
-    if (onUpdateSpecialty && member) {
-      onUpdateSpecialty(member.id, value as DentalSpecialty);
-      setEditingSpecialty(false);
-    }
+
+  const renderAdminControls = () => {
+    if (!canModifyAdminRights || !onToggleAdmin) return null;
+
+    return (
+      <div className="admin-controls space-y-2">
+        <Separator />
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Droits administrateur</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onToggleAdmin(member.id, !member.isAdmin)}
+          >
+            {member.isAdmin ? "Révoquer" : "Accorder"}
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="flex justify-between items-start">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-14 w-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 text-lg font-medium">
-            {member.firstName.charAt(0)}{member.lastName.charAt(0)}
-          </div>
-          <div>
-            <h3 className="font-medium text-lg">
-              {member.role === "dentiste" ? "Dr. " : ""}{member.firstName} {member.lastName}
-            </h3>
-            <p className="text-gray-500 text-sm">{member.contact}</p>
-            {isViewingOwner && (
-              <Badge className="mt-1 bg-[#B88E23]">Propriétaire du compte</Badge>
-            )}
-          </div>
+    <div className="space-y-6">
+      <div className="basic-info space-y-4">
+        <div className="flex items-center gap-4 justify-between">
+          <Badge className={`${member.role === 'dentiste' ? 'bg-blue-100 text-blue-800' : member.role === 'assistante' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+            {member.role === 'dentiste' ? 'Dentiste' : member.role === 'assistante' ? 'Assistante' : 'Secrétaire'}
+          </Badge>
+          
+          {member.isAdmin && (
+            <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200">
+              Administrateur
+            </Badge>
+          )}
         </div>
         
-        <p><span className="font-medium">Rôle:</span> {member.role.charAt(0).toUpperCase() + member.role.slice(1)}</p>
-        
-        {member.role === "dentiste" && (
-          editingSpecialty ? (
-            <div className="flex items-center gap-2 my-2">
-              <span className="font-medium">Spécialité:</span>
-              <Select 
-                defaultValue={member.specialty || ""}
-                onValueChange={handleSpecialtyChange}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sélectionner une spécialité" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="omnipratique">Omnipratique</SelectItem>
-                  <SelectItem value="orthodontie">Orthodontie</SelectItem>
-                  <SelectItem value="parodontie">Parodontie</SelectItem>
-                  <SelectItem value="esthétique">Esthétique</SelectItem>
-                  <SelectItem value="chirurgie orale">Chirurgie orale</SelectItem>
-                  <SelectItem value="médecine bucco dentaire">Médecine bucco-dentaire</SelectItem>
-                  <SelectItem value="pédodontie">Pédodontie</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setEditingSpecialty(false)}
-                className="h-8 px-2"
-              >
-                Annuler
-              </Button>
-            </div>
-          ) : (
-            <p className="flex items-center gap-1">
-              <span className="font-medium">Spécialité:</span> 
-              <span className="flex items-center gap-1">
-                <Activity className="h-4 w-4 text-blue-700" />
-                {member.specialty ? member.specialty.charAt(0).toUpperCase() + member.specialty.slice(1) : "Non spécifiée"}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setEditingSpecialty(true)}
-                  className="h-6 w-6 p-0 ml-1"
-                >
-                  <Pencil className="h-3.5 w-3.5 text-gray-500" />
-                </Button>
-              </span>
-            </p>
-          )
-        )}
-        
-        {member.hireDate && <p><span className="font-medium">Date d'embauche:</span> {member.hireDate}</p>}
-        
-        {/* Admin toggle switch (only visible to admins) */}
-        {canModifyAdminRights && (
-          <div className="flex items-center space-x-2 mt-4 pt-4 border-t border-gray-200">
-            <Switch 
-              id="admin-mode" 
-              checked={member.isAdmin || false}
-              onCheckedChange={(checked) => {
-                if (onToggleAdmin) {
-                  onToggleAdmin(member.id, checked);
-                }
-              }}
-            />
-            <Label htmlFor="admin-mode">Droits administrateur</Label>
+        {member.contact && (
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">{member.contact}</span>
           </div>
         )}
         
-        {/* Always show admin badge for account owners */}
-        {isViewingOwner && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-gray-600 italic">
-              Les propriétaires du compte ont automatiquement des droits d'administrateur.
-            </p>
+        {member.hireDate && (
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">
+              {calculateTimeWithCompany(member.hireDate)} - Depuis le {format(new Date(member.hireDate), 'PPP', { locale: fr })}
+            </span>
+          </div>
+        )}
+        
+        {member.location && (
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">{member.location}</span>
+          </div>
+        )}
+        
+        {member.contractType && (
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">{member.contractType}</span>
           </div>
         )}
       </div>
       
-      <div>
-        {member.contractFile ? (
-          <div className="bg-green-50 text-green-700 px-3 py-2 rounded-md border border-green-100 flex items-center">
-            <span className="font-medium">Contrat signé ✓</span>
-          </div>
-        ) : (
-          <div className="bg-amber-50 text-amber-700 px-3 py-2 rounded-md border border-amber-100">
-            <span className="font-medium">Sans contrat</span>
-          </div>
+      <div className="flex gap-2 flex-wrap">
+        {member.workingDays && member.workingDays.length > 0 && (
+          <Card className="w-full">
+            <CardHeader className="py-2 px-4">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-sm flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Jours travaillés
+                </span>
+                
+                {onOpenScheduleDialog && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onOpenScheduleDialog}
+                    className="h-7 px-2 text-xs"
+                  >
+                    Gérer planning
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="py-2 px-4">
+              <div className="flex flex-wrap gap-1">
+                {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => {
+                  const isWorking = member.workingDays?.includes(day as any);
+                  const dayTranslations: Record<string, string> = {
+                    monday: "Lun",
+                    tuesday: "Mar",
+                    wednesday: "Mer",
+                    thursday: "Jeu",
+                    friday: "Ven",
+                    saturday: "Sam",
+                    sunday: "Dim"
+                  };
+                  
+                  return (
+                    <Badge
+                      key={day}
+                      variant="outline"
+                      className={`${isWorking ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
+                    >
+                      {dayTranslations[day]}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
+
+      <div className="specialty-section space-y-2">
+        {member.specialty && (
+          <>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Spécialité</span>
+              {onUpdateSpecialty ? (
+                <ToggleGroup
+                  type="single"
+                  defaultValue={member.specialty}
+                  onValueChange={(value) => onUpdateSpecialty(member.id, value as DentalSpecialty)}
+                >
+                  <ToggleGroupItem value="omnipratique" aria-label="Omnipratique">
+                    Omnipratique
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="orthodontie" aria-label="Orthodontie">
+                    Orthodontie
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="parodontie" aria-label="Parodontie">
+                    Parodontie
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              ) : (
+                <span className="text-sm">{member.specialty}</span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {renderAdminControls()}
     </div>
   );
 };
