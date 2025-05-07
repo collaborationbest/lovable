@@ -3,7 +3,9 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MemberRole, ContractType } from "@/types/TeamMember";
+import { MemberRole, ContractType, WeekDay } from "@/types/TeamMember";
+import WorkingDaysSelector from "./WorkingDaysSelector";
+import ColorSelector from "./ColorSelector";
 
 interface MemberEditFormProps {
   editedMember: Partial<{
@@ -13,17 +15,23 @@ interface MemberEditFormProps {
     role: MemberRole;
     contractType: ContractType;
     hireDate: string;
+    colorId: string;
+    workingDays: WeekDay[];
   }>;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleRoleChange: (value: string) => void;
   handleContractTypeChange: (value: string) => void;
+  handleColorChange: (colorId: string) => void;
+  handleWorkingDaysChange: (days: WeekDay[]) => void;
 }
 
 const MemberEditForm: React.FC<MemberEditFormProps> = ({
   editedMember,
   handleInputChange,
   handleRoleChange,
-  handleContractTypeChange
+  handleContractTypeChange,
+  handleColorChange,
+  handleWorkingDaysChange
 }) => {
   return (
     <div className="space-y-4">
@@ -85,6 +93,33 @@ const MemberEditForm: React.FC<MemberEditFormProps> = ({
           </SelectContent>
         </Select>
       </div>
+      
+      {/* Color selector */}
+      <div className="grid grid-cols-4 items-start gap-4">
+        <div className="text-right">
+          <Label>Couleur</Label>
+        </div>
+        <div className="col-span-3">
+          <ColorSelector 
+            selectedColor={editedMember.colorId || ""} 
+            onChange={handleColorChange} 
+          />
+        </div>
+      </div>
+      
+      {/* Working days selector */}
+      <div className="grid grid-cols-4 items-start gap-4">
+        <div className="text-right">
+          <Label>Jours travaillés</Label>
+        </div>
+        <div className="col-span-3">
+          <WorkingDaysSelector 
+            selectedDays={editedMember.workingDays || []} 
+            onChange={handleWorkingDaysChange} 
+          />
+        </div>
+      </div>
+      
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="contractType" className="text-right">
           Type de contrat
