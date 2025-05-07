@@ -1,22 +1,18 @@
 
 import React from "react";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Users } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 interface TeamHeaderProps {
   isAdmin: boolean;
-  onAddMember: () => void;
 }
 
-const TeamHeader: React.FC<TeamHeaderProps> = ({ isAdmin, onAddMember }) => {
+const TeamHeader: React.FC<TeamHeaderProps> = ({ isAdmin }) => {
   return (
-    <div className="mb-6">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestion de l'Équipe</h1>
-      <p className="text-gray-600">
-        Gérez les membres de votre équipe. 
-        <a href="#" className="text-blue-600 hover:underline ml-1">En savoir plus</a>
-      </p>
-    </div>
+    <PageHeader 
+      title="Gestion de l'Équipe" 
+      icon={<Users size={20} />}
+    />
   );
 };
 
