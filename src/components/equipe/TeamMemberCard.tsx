@@ -1,65 +1,71 @@
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Mail, UserCheck } from "lucide-react";
-import { TeamMember, MemberRole } from "@/types/TeamMember";
+import { Button } from "@/components/ui/button";
+import { UserRound } from "lucide-react";
+import { TeamMember } from "@/types/TeamMember";
+import { formatRole } from "@/utils/teamMemberUtils";
 
 interface TeamMemberCardProps {
   member: TeamMember;
-  onClick: (member: TeamMember) => void;
+  onManageMember: (member: TeamMember) => void;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
 }
 
+// Map of color IDs to hex values
+const colorMap: Record<string, string> = {
+  blue: "#1a73e8",
+  red: "#e53935",
+  green: "#43a047",
+  purple: "#8e24aa",
+  yellow: "#f9a825",
+  teal: "#00897b",
+  orange: "#ef6c00",
+  pink: "#d81b60",
+  cyan: "#00acc1",
+  brown: "#6d4c41",
+};
+
 const TeamMemberCard: React.FC<TeamMemberCardProps> = ({ 
-  member,
-  onClick
+  member, 
+  onManageMember, 
+  isSelected, 
+  onSelect 
 }) => {
-  // Fonction pour obtenir les initiales selon le rôle
-  const getRoleInitials = (role: MemberRole): string => {
-    switch (role) {
-      case "dentiste": return "MD";
-      case "assistante": return "AD";
-      case "secrétaire": return "SE";
-      default: return "";
-    }
-  };
+  const borderColor = member.colorId ? colorMap[member.colorId] : '';
   
   return (
     <Card 
-      className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer rounded-xl border border-gray-100"
-      onClick={() => onClick(member)}
+      className={`border transition-all ${isSelected ? 'ring-2 ring-primary' : ''}`}
+      style={{ borderLeftColor: borderColor, borderLeftWidth: borderColor ? '4px' : '1px' }}
     >
       <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-full flex-shrink-0 flex items-center justify-center text-lg font-semibold" 
-               style={{ background: 'linear-gradient(to bottom right, #e9f0ff, #c7d8ff)' }}>
-            <span className="text-blue-600">{getRoleInitials(member.role)}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-800">
+              <UserRound className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-medium">
+                {member.role === "dentiste" ? "Dr. " : ""}
+                {member.firstName} {member.lastName}
+                {member.isAdmin && (
+                  <span className="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                    Admin
+                  </span>
+                )}
+              </h3>
+              <p className="text-sm text-gray-500">{formatRole(member.role)}</p>
+            </div>
           </div>
-          
-          <div className="flex-grow min-w-0">
-            <h3 className="font-medium text-gray-900 text-lg">
-              {member.role === "dentiste" ? "Dr " : ""}{member.lastName} {member.firstName}
-            </h3>
-            {member.contact && (
-              <div className="text-sm text-gray-500 flex items-center mt-1 truncate">
-                <Mail className="h-3.5 w-3.5 mr-1 text-gray-400" />
-                <span className="truncate">{member.contact}</span>
-              </div>
-            )}
-          </div>
-          
-          <div className="ml-auto flex-shrink-0">
-            {member.contractFile ? (
-              <div className="px-3 py-1.5 rounded-full bg-green-50 text-green-600 border border-green-100 flex items-center">
-                <UserCheck className="h-4 w-4 mr-1.5" />
-                <span className="font-medium text-sm">Contrat ✓</span>
-              </div>
-            ) : (
-              <div className="px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 flex items-center">
-                <span className="font-medium text-sm">Sans contrat</span>
-              </div>
-            )}
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => onManageMember(member)}
+          >
+            Gérer
+          </Button>
         </div>
       </CardContent>
     </Card>
