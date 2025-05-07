@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +8,17 @@ declare global {
   interface Window {
     google: typeof google;
     selectLocal: (id: number) => void;
+    ENV_GOOGLE_MAPS_API_KEY?: string; // Add this to window type
   }
 }
+
+// This ensures the Google Maps API key is available to the loader script
+useEffect(() => {
+  // Check if we have an API key from Vite environment variables
+  if (import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
+    window.ENV_GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  }
+}, []);
 
 export interface LocalData {
   id: number;
@@ -41,6 +49,11 @@ const LocalAnalysisMap = ({ locals, selectedId, onSelectLocal }: LocalAnalysisMa
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   useEffect(() => {
+    // Make sure the API key is available to the loader script
+    if (import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
+      window.ENV_GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    }
+    
     // Fonction pour initialiser la carte
     const initMap = () => {
       if (!mapContainerRef.current) return;
