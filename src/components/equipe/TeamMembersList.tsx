@@ -27,7 +27,9 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({
           <TeamMemberCard
             key={member.id}
             member={member}
-            onClick={onViewMember}
+            onManageMember={onViewMember}
+            isSelected={false}
+            onSelect={() => {}} 
           />
         ))}
       </div>
